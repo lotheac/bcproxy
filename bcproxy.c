@@ -6,15 +6,28 @@
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 #include "bc_parser.h"
 
 #define BATHOST "batmud.bat.org"
 #define BATPORT "23"
 #define BC_ENABLE "\033bc 1\n"
 
-/* Binds to all localhost addresses using TCP and the provided servname,
- * printing diagnostics and errors on stderr. Returns a socket suitable for
- * listening on, or negative on error. */
+struct proxy_state {
+    char    *obuf;
+    char    *argbuf;
+    size_t  olen;
+    size_t  arglen;
+    size_t  osz;
+    size_t  argsz;
+    int     ignore; /* Don't output anything if this is set */
+};
+
+/* Binds to loopback address using TCP and the provided servname, printing
+ * diagnostics and errors on stderr. Returns a socket suitable for listening
+ * on, or negative on error. */
 static int bindall(const char *servname) {
     int sock = -1;
     int ret;
@@ -22,10 +35,10 @@ static int bindall(const char *servname) {
     struct addrinfo hints = {
         .ai_family = AF_INET6,
         .ai_socktype = SOCK_STREAM,
-        .ai_flags = AI_PASSIVE
+        /* Without AI_PASSIVE we'll get loopback addresses */
     };
     result = NULL;
-    ret = getaddrinfo("::1", servname, &hints, &result);
+    ret = getaddrinfo(NULL, servname, &hints, &result);
     if (ret != 0) {
         fprintf(stderr, "bindall: getaddrinfo: %s\n", gai_strerror(ret));
         goto cleanup;
@@ -119,8 +132,65 @@ static int connect_batmud(void) {
 
 #define BUFSZ 4096
 
+static void on_close(struct bc_parser *parser) {
+    struct proxy_state *st = parser->data;
+    st->ignore = 0;
+}
+
+static void on_arg(struct bc_parser *parser, const char *buf, size_t len) {
+    struct proxy_state *st = parser->data;
+    if (st->arglen + len > st->argsz) {
+        char *newp = realloc(st->argbuf, st->arglen + BUFSZ);
+        if (!newp) {
+            perror("realloc arg buffer");
+            return;
+        }
+        st->argbuf = newp;
+        st->argsz += BUFSZ;
+    }
+    assert(st->arglen + len <= st->argsz);
+    memcpy(st->argbuf + st->arglen, buf, len);
+    st->arglen += len;
+}
+
+static void on_arg_end(struct bc_parser *parser) {
+    struct proxy_state *st = parser->data;
+    char *argstr = malloc(st->arglen + 1);
+    memcpy(argstr, st->argbuf, st->arglen);
+    argstr[st->arglen] = '\0';
+    /* FIXME magic numbers */
+    switch (parser->code) {
+        case 10: /* Message with type */
+            if (strcmp(argstr, "spec_prompt") == 0) {
+                /* These are unwanted since they show up every second in
+                 * addition to the normal prompt line */
+                st->ignore = 1;
+            }
+            break;
+        case 22: /* Message attributes */
+        case 23:
+        case 24:
+        case 25:
+            /* FIXME assert */
+            assert(st->olen + st->arglen <= st->osz);
+            memcpy(st->obuf + st->olen, st->argbuf, st->arglen);
+            st->olen += st->arglen;
+    }
+
+    st->arglen = 0;
+    free(argstr);
+}
+
+static void on_text(struct bc_parser *parser, const char *buf, size_t len) {
+    struct proxy_state *st = parser->data;
+    /* FIXME assert */
+    assert(st->olen + len <= st->osz);
+    memcpy(st->obuf + st->olen, buf, len);
+    st->olen += len;
+}
+
 static int handle_connection(int client) {
-    char buf[BUFSZ];
+    char ibuf[BUFSZ];
     int status = 1;
     int server = connect_batmud();
     if (server == -1)
@@ -129,7 +199,27 @@ static int handle_connection(int client) {
 
     fd_set rset;
     const int nfds = (server > client ? server : client) + 1;
-    ssize_t recvd, sent;
+    ssize_t recvd, sent, bytes_to_send;
+
+    struct proxy_state st = { 0 };
+    st.obuf = malloc(BUFSZ);
+    if (!st.obuf) {
+        perror("malloc");
+        goto out;
+    }
+    st.argbuf = malloc(BUFSZ);
+    if (!st.argbuf) {
+        perror("malloc");
+        goto out;
+    }
+    st.osz = BUFSZ;
+    struct bc_parser parser = {
+        .data = &st,
+        .on_text = on_text,
+        .on_arg = on_arg,
+        .on_arg_end = on_arg_end,
+        .on_close = on_close,
+    };
 
     for(;;) {
         int nready;
@@ -144,7 +234,6 @@ retry_select:
             perror("handle_connection: select");
             goto out;
         }
-        /* FIXME TESTING - handle server fd differently*/
         int from, to;
         if (FD_ISSET(server, &rset)) {
             from = server;
@@ -154,29 +243,42 @@ retry_select:
             to = server;
         }
 
-        if (1) {
+        recvd = recv(from, ibuf, BUFSZ, MSG_DONTWAIT);
+        if (recvd == -1) {
+            perror("handle_connection: recv");
+            goto out;
+        } else if (recvd == 0) {
+            fprintf(stderr, "%s disconnect\n",
+                    from == client ? "client" : "server");
+            status = 0;
+            goto out;
+        }
+
+        if (from == client) {
             /* We don't do anything for data coming from the client; just send
              * it along. */
-            recvd = recv(from, buf, BUFSZ, MSG_DONTWAIT);
-            if (recvd == -1) {
-                perror("handle_connection: client recv");
-                goto out;
-            } else if (recvd == 0) {
-                fprintf(stderr, "client disconnect\n");
-                status = 0;
-                goto out;
-            }
-            sent = sendall(to, buf, recvd);
-            if (sent != recvd) {
-                fprintf(stderr, "sent only %zd bytes out of %zd from client "
-                        "to server\n", sent, recvd);
-                goto out;
-            }
+            bytes_to_send = recvd;
+            sent = sendall(to, ibuf, recvd);
+        } else {
+            bc_parse(&parser, ibuf, recvd);
+            /* Callbacks will fill obuf and set st.len. */
+            bytes_to_send = st.olen;
+            sent = sendall(to, st.obuf, st.olen);
+            st.olen = 0;
+        }
+        if (sent != bytes_to_send) {
+            fprintf(stderr, "sent only %zd bytes out of %zd to %s\n",
+                    sent,
+                    bytes_to_send,
+                    to == client ? "client" : "server");
+            goto out;
         }
     }
 
     status = 0;
 out:
+    free(st.obuf);
+    free(st.argbuf);
     (void) shutdown(server, SHUT_RDWR);
     (void) shutdown(client, SHUT_RDWR);
     return status;

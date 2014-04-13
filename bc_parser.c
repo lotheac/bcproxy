@@ -2,6 +2,7 @@
 #include <string.h>
 #include "bc_parser.h"
 
+#define ESC '\033'
 #define IS_DIGIT(c) ((c) >= '0' && (c) <= '9')
 
 enum state {
@@ -9,27 +10,29 @@ enum state {
     s_esc,
     s_open,     /* ESC< */
     s_open_n,   /* ESC<[0-9] */
+    s_arg,      /* "argument"; like s_text, but distinct callback, since stuff
+                   inside control tags might have to be buffered */
     s_close,    /* ESC> */
     s_close_n,  /* ESC>[0-9] */
 };
 
-void bc_parser_init(struct bc_parser *parser) {
-    void *data = parser->data;
-    memset(parser, 0, sizeof(struct bc_parser));
-    parser->data = data;
-}
-
 void bc_parse(struct bc_parser *parser, const char *buf, size_t len) {
     const char *text_start = NULL;
     const char *p;
+
     for (p = buf; p < buf + len; p++) {
         char ch = *p;
 reread:
         switch (parser->state) {
+            case s_arg:
             case s_text: {
-                if (ch == '\033') {
-                    if(parser->on_text && text_start)
-                        parser->on_text(parser, text_start, p - text_start);
+                if (ch == ESC) {
+                    if (text_start) {
+                        if (parser->state == s_text && parser->on_text)
+                            parser->on_text(parser, text_start, p - text_start);
+                        else if (parser->state == s_arg && parser->on_arg)
+                            parser->on_arg(parser, text_start, p - text_start);
+                    }
                     parser->state = s_esc;
                     text_start = NULL;
                 } else if (!text_start)
@@ -42,12 +45,13 @@ reread:
                     parser->code = 0;
                 } else if (ch == '|') {
                     parser->state = s_text;
-                    if (parser->on_arg_end) {
+                    if (parser->on_arg_end)
                         parser->on_arg_end(parser);
-                    }
                 } else if (ch == '>') {
                     parser->state = s_close;
                     parser->code = 0;
+                    if (parser->on_arg_end)
+                        parser->on_arg_end(parser);
                 } else {
                     /* The previous char (ESC) was part of normal text, but we
                      * can't necessarily reach it any more (it might have been
@@ -75,7 +79,7 @@ reread:
                 else {
                     if (parser->on_open)
                         parser->on_open(parser);
-                    parser->state = s_text;
+                    parser->state = s_arg;
                 }
                 break;
             }
@@ -98,6 +102,10 @@ reread:
             }
         }
     }
-    if (parser->state == s_text && parser->on_text && text_start)
-        parser->on_text(parser, text_start, p - text_start);
+    if (text_start) {
+        if (parser->state == s_text && parser->on_text)
+            parser->on_text(parser, text_start, p - text_start);
+        else if (parser->state == s_arg && parser->on_arg)
+            parser->on_arg(parser, text_start, p - text_start);
+    }
 }

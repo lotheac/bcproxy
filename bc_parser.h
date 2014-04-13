@@ -16,13 +16,13 @@ struct bc_parser {
     int         state;
     int         code;
     bc_callback on_text;
-    bc_notify   on_open;
+    bc_callback on_arg;
     bc_notify   on_arg_end;
+    bc_notify   on_open;
     bc_notify   on_close;
     void        *data; /* application data pointer */
 };
 
-void bc_parser_init(struct bc_parser *parser);
 void bc_parse(struct bc_parser *parser, const char *buf, size_t len);
 
 #endif /* bc_parser_h */
