@@ -25,14 +25,13 @@ void bc_parse(struct bc_parser *parser, const char *buf, size_t len) {
 reread:
         switch (parser->state) {
             case s_text: {
-                if (!text_start)
-                    text_start = p;
                 if (ch == '\033') {
-                    if(parser->on_text)
+                    if(parser->on_text && text_start)
                         parser->on_text(parser, text_start, p - text_start);
                     parser->state = s_esc;
                     text_start = NULL;
-                }
+                } else if (!text_start)
+                    text_start = p;
                 break;
             }
             case s_esc: {
