@@ -5,11 +5,11 @@
 struct proxy_state {
     char    *obuf;
     char    *argbuf;
+    char    *argstr;
     size_t  olen;
     size_t  arglen;
     size_t  osz;
     size_t  argsz;
-    int     ignore; /* Don't output anything if this is set */
 };
 
 void on_open(struct bc_parser *parser);

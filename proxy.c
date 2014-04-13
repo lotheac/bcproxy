@@ -5,7 +5,6 @@
 #include "parser.h"
 #include "proxy.h"
 
-
 /* FIXME really need to create a data type for these buffers */
 static void append_arg(struct proxy_state *st, const char *buf, size_t len) {
     if (st->arglen + len > st->argsz) {
@@ -43,7 +42,33 @@ void on_open(struct bc_parser *parser) {
 
 void on_close(struct bc_parser *parser) {
     struct proxy_state *st = parser->data;
-    st->ignore = 0;
+
+    switch (parser->code) {
+        case 10:
+            if (st->argstr) {
+                if (strcmp(st->argstr, "spec_prompt") == 0) {
+                    append_output(st, st->argbuf, st->arglen);
+                    /* Parser removes GOAHEAD; see discussion in parser.c */
+                    append_output(st, "\377\371", 2);
+                    break;
+                } else if (strcmp(st->argstr, "spec_map") == 0 &&
+                           strcmp(st->argbuf, "NoMapSupport") == 0) {
+                    break;
+                }
+            }
+            /* Other msg 10 types fallthrough */
+        case 20:
+        case 21:
+        case 22: /* Message attributes */
+        case 23:
+        case 24:
+        case 25:
+        case 31: /* "in-game link" */
+            append_output(st, st->argbuf, st->arglen);
+    }
+
+    free(st->argstr);
+    st->arglen = 0;
 }
 
 void on_arg(struct bc_parser *parser, const char *buf, size_t len) {
@@ -53,31 +78,17 @@ void on_arg(struct bc_parser *parser, const char *buf, size_t len) {
 
 void on_arg_end(struct bc_parser *parser) {
     struct proxy_state *st = parser->data;
-    char *argstr = malloc(st->arglen + 1);
-    memcpy(argstr, st->argbuf, st->arglen);
-    argstr[st->arglen] = '\0';
-    /* FIXME magic numbers */
-    switch (parser->code) {
-        case 10: /* Message with type */
-            if (strcmp(argstr, "spec_prompt") == 0) {
-                /* These are unwanted since they show up every second in
-                 * addition to the normal prompt line */
-                st->ignore = 1;
-            }
-            break;
-        case 22: /* Message attributes */
-        case 23:
-        case 24:
-        case 25:
-            append_output(st, st->argbuf, st->arglen);
-    }
+    st->argstr = malloc(st->arglen + 1);
+    if (st->argstr) {
+        memcpy(st->argstr, st->argbuf, st->arglen);
+        st->argstr[st->arglen] = '\0';
+    } else
+        perror("argstr: malloc");
 
     st->arglen = 0;
-    free(argstr);
 }
 
 void on_text(struct bc_parser *parser, const char *buf, size_t len) {
     struct proxy_state *st = parser->data;
-    if (!st->ignore)
-        append_output(st, buf, len);
+    append_output(st, buf, len);
 }
