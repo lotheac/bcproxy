@@ -14,7 +14,9 @@ enum state {
 };
 
 void bc_parser_init(struct bc_parser *parser) {
+    void *data = parser->data;
     memset(parser, 0, sizeof(struct bc_parser));
+    parser->data = data;
 }
 
 void bc_parse(struct bc_parser *parser, const char *buf, size_t len) {

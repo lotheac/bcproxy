@@ -19,6 +19,7 @@ struct bc_parser {
     bc_notify   on_open;
     bc_notify   on_arg_end;
     bc_notify   on_close;
+    void        *data; /* application data pointer */
 };
 
 void bc_parser_init(struct bc_parser *parser);
