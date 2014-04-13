@@ -21,4 +21,7 @@ struct bc_parser {
     bc_notify   on_close;
 };
 
+void bc_parser_init(struct bc_parser *parser);
+size_t bc_parse(struct bc_parser *parser, const char *buf, size_t len);
+
 #endif /* bc_parser_h */

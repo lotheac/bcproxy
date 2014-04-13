@@ -1,3 +1,5 @@
+#include <unistd.h>
+#include <string.h>
 #include "bc_parser.h"
 
 #define ESC '\033'
@@ -17,17 +19,17 @@ void bc_parser_init(struct bc_parser *parser) {
 }
 
 size_t bc_parse(struct bc_parser *parser, const char *buf, size_t len) {
-    char *text_start = NULL;
-    for (char *p = buf; p < buf + len; p++) {
+    const char *text_start = NULL;
+    const char *p;
+    for (p = buf; p < buf + len; p++) {
         char ch = *p;
         switch (parser->state) {
             case s_text: {
                 if (!text_start)
                     text_start = p;
                 if (ch == ESC) {
-                    if(parser->on_text) {
+                    if(parser->on_text)
                         parser->on_text(parser, text_start, p - text_start);
-                    }
                     parser->state = s_esc;
                     text_start = NULL;
                 }
@@ -59,7 +61,8 @@ size_t bc_parse(struct bc_parser *parser, const char *buf, size_t len) {
                 if (parser->state == s_open)
                     parser->state = s_open_n;
                 else {
-                    parser->on_open(parser);
+                    if (parser->on_open)
+                        parser->on_open(parser);
                     parser->state = s_text;
                 }
                 break;
@@ -75,11 +78,16 @@ size_t bc_parse(struct bc_parser *parser, const char *buf, size_t len) {
                 if (parser->state == s_close)
                     parser->state = s_close_n;
                 else {
-                    parser->on_close(parser);
+                    if (parser->on_close)
+                        parser->on_close(parser);
                     parser->state = s_text;
                 }
                 break;
             }
         }
     }
+    if (parser->state == s_text && parser->on_text)
+        parser->on_text(parser, text_start, p - text_start);
+    /* XXX maybe this function should be void since we never fail */
+    return len;
 }

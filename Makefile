@@ -9,4 +9,6 @@ tags: *.c
 cscope.out: *.c
 	cscope -bR
 
+test_parser: test_parser.c bc_parser.c
+
 bcproxy: bcproxy.c
