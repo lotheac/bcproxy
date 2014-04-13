@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include "bc_parser.h"
+#include "parser.h"
 
 void on_open(struct bc_parser *parser) {
     printf("<%d>", parser->code);

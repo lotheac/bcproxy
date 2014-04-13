@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <string.h>
-#include "bc_parser.h"
+#include "parser.h"
 
 #define ESC '\033'
 #define IS_DIGIT(c) ((c) >= '0' && (c) <= '9')

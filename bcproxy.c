@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include "bc_parser.h"
+#include "parser.h"
 
 #define BATHOST "batmud.bat.org"
 #define BATPORT "23"
