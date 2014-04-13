@@ -10,20 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parser.h"
+#include "proxy.h"
 
 #define BATHOST "batmud.bat.org"
 #define BATPORT "23"
 #define BC_ENABLE "\033bc 1\n"
-
-struct proxy_state {
-    char    *obuf;
-    char    *argbuf;
-    size_t  olen;
-    size_t  arglen;
-    size_t  osz;
-    size_t  argsz;
-    int     ignore; /* Don't output anything if this is set */
-};
 
 /* Binds to loopback address using TCP and the provided servname, printing
  * diagnostics and errors on stderr. Returns a socket suitable for listening
@@ -131,63 +122,6 @@ static int connect_batmud(void) {
 }
 
 #define BUFSZ 4096
-
-static void on_close(struct bc_parser *parser) {
-    struct proxy_state *st = parser->data;
-    st->ignore = 0;
-}
-
-static void on_arg(struct bc_parser *parser, const char *buf, size_t len) {
-    struct proxy_state *st = parser->data;
-    if (st->arglen + len > st->argsz) {
-        char *newp = realloc(st->argbuf, st->arglen + BUFSZ);
-        if (!newp) {
-            perror("realloc arg buffer");
-            return;
-        }
-        st->argbuf = newp;
-        st->argsz += BUFSZ;
-    }
-    assert(st->arglen + len <= st->argsz);
-    memcpy(st->argbuf + st->arglen, buf, len);
-    st->arglen += len;
-}
-
-static void on_arg_end(struct bc_parser *parser) {
-    struct proxy_state *st = parser->data;
-    char *argstr = malloc(st->arglen + 1);
-    memcpy(argstr, st->argbuf, st->arglen);
-    argstr[st->arglen] = '\0';
-    /* FIXME magic numbers */
-    switch (parser->code) {
-        case 10: /* Message with type */
-            if (strcmp(argstr, "spec_prompt") == 0) {
-                /* These are unwanted since they show up every second in
-                 * addition to the normal prompt line */
-                st->ignore = 1;
-            }
-            break;
-        case 22: /* Message attributes */
-        case 23:
-        case 24:
-        case 25:
-            /* FIXME assert */
-            assert(st->olen + st->arglen <= st->osz);
-            memcpy(st->obuf + st->olen, st->argbuf, st->arglen);
-            st->olen += st->arglen;
-    }
-
-    st->arglen = 0;
-    free(argstr);
-}
-
-static void on_text(struct bc_parser *parser, const char *buf, size_t len) {
-    struct proxy_state *st = parser->data;
-    /* FIXME assert */
-    assert(st->olen + len <= st->osz);
-    memcpy(st->obuf + st->olen, buf, len);
-    st->olen += len;
-}
 
 static int handle_connection(int client) {
     char ibuf[BUFSZ];

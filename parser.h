@@ -5,8 +5,6 @@ struct bc_parser;
 
 /* Callback function whose arguments are the parser that calls it and pointer
  * to the start of the match, plus length. */
-/* XXX REMOVE MAYBE: The same callback may be called
- * multiple times because message boundaries can split control codes. */
 typedef void (*bc_callback) (struct bc_parser *parser, const char *loc, size_t len);
 /* Callback function for notification, carries no data (just the pointer to the
  * parser) */
