@@ -97,6 +97,6 @@ reread:
             }
         }
     }
-    if (parser->state == s_text && parser->on_text)
+    if (parser->state == s_text && parser->on_text && text_start)
         parser->on_text(parser, text_start, p - text_start);
 }

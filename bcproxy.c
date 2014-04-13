@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
+#include "bc_parser.h"
 
 #define BATHOST "batmud.bat.org"
 #define BATPORT "23"
