@@ -128,8 +128,10 @@ reread:
                     if (parser->on_close)
                         parser->on_close(parser);
                     parser->state = s_text;
-                    assert(parser->in_tag);
-                    parser->in_tag--;
+                    /* There are more closing than opening tags sent by bat, so
+                     * cope with it */
+                    if (parser->in_tag != 0)
+                        parser->in_tag--;
                 }
                 break;
             }
