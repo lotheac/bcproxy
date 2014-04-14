@@ -15,6 +15,8 @@ void on_close(struct bc_parser *parser) {
 
     switch (parser->code) {
         case 10:
+            /* NULL-terminate tmpbuf to allow strcmp */
+            buffer_append(st->tmpbuf, "", 1);
             if (st->argstr) {
                 if (strcmp(st->argstr, "spec_prompt") == 0) {
                     buffer_append_buf(st->obuf, st->tmpbuf);
@@ -37,7 +39,8 @@ void on_close(struct bc_parser *parser) {
             buffer_append_buf(st->obuf, st->tmpbuf);
     }
 
-    free(st->argstr),
+    free(st->argstr);
+    st->argstr = NULL;
     buffer_clear(st->tmpbuf);
 }
 
