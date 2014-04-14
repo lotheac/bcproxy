@@ -71,7 +71,7 @@ void on_close(struct bc_parser *parser) {
     st->arglen = 0;
 }
 
-void on_arg(struct bc_parser *parser, const char *buf, size_t len) {
+void on_tag_text(struct bc_parser *parser, const char *buf, size_t len) {
     struct proxy_state *st = parser->data;
     append_arg(st, buf, len);
 }

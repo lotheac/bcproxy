@@ -16,7 +16,7 @@ void on_open(struct bc_parser *parser);
 void on_close(struct bc_parser *parser);
 void on_arg_end(struct bc_parser *parser);
 
-void on_arg(struct bc_parser *parser, const char *buf, size_t len);
 void on_text(struct bc_parser *parser, const char *buf, size_t len);
+void on_tag_text(struct bc_parser *parser, const char *buf, size_t len);
 
 #endif /* proxy_h */

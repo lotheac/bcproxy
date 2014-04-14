@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     parser.on_open = on_open;
     parser.on_close = on_close;
     parser.on_text = on_text;
-    parser.on_arg = on_arg;
+    parser.on_tag_text = on_tag_text;
     parser.on_arg_end = on_arg_end;
     while ((n = read(STDIN_FILENO, buf, bufsz)) > 0) {
         bc_parse(&parser, buf, n);

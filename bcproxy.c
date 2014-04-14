@@ -150,7 +150,7 @@ static int handle_connection(int client) {
     struct bc_parser parser = {
         .data = &st,
         .on_text = on_text,
-        .on_arg = on_arg,
+        .on_tag_text = on_tag_text,
         .on_arg_end = on_arg_end,
         .on_close = on_close,
     };
