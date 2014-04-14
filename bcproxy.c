@@ -136,17 +136,16 @@ static int handle_connection(int client) {
     ssize_t recvd, sent, bytes_to_send;
 
     struct proxy_state st = { 0 };
-    st.obuf = malloc(BUFSZ);
+    st.obuf = buffer_new(BUFSZ);
     if (!st.obuf) {
-        perror("malloc");
+        perror("creating outbut buffer");
         goto out;
     }
-    st.argbuf = malloc(BUFSZ);
-    if (!st.argbuf) {
-        perror("malloc");
+    st.tmpbuf = buffer_new(BUFSZ);
+    if (!st.tmpbuf) {
+        perror("creating tmp buffer");
         goto out;
     }
-    st.osz = BUFSZ;
     struct bc_parser parser = {
         .data = &st,
         .on_text = on_text,
@@ -195,10 +194,10 @@ retry_select:
             sent = sendall(to, ibuf, recvd);
         } else {
             bc_parse(&parser, ibuf, recvd);
-            /* Callbacks will fill obuf and set st.len. */
-            bytes_to_send = st.olen;
-            sent = sendall(to, st.obuf, st.olen);
-            st.olen = 0;
+            /* Callbacks will fill obuf. */
+            bytes_to_send = st.obuf->len;
+            sent = sendall(to, st.obuf->data, st.obuf->len);
+            buffer_clear(st.obuf);
         }
         if (sent != bytes_to_send) {
             fprintf(stderr, "sent only %zd bytes out of %zd to %s\n",
@@ -211,8 +210,8 @@ retry_select:
 
     status = 0;
 out:
-    free(st.obuf);
-    free(st.argbuf);
+    buffer_free(st.obuf);
+    buffer_free(st.tmpbuf);
     (void) shutdown(server, SHUT_RDWR);
     (void) shutdown(client, SHUT_RDWR);
     return status;

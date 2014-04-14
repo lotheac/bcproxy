@@ -1,15 +1,12 @@
 #ifndef proxy_h
 #define proxy_h
 #include "parser.h"
+#include "buffer.h"
 
 struct proxy_state {
-    char    *obuf;
-    char    *argbuf;
-    char    *argstr;
-    size_t  olen;
-    size_t  arglen;
-    size_t  osz;
-    size_t  argsz;
+    buffer_t    *obuf;
+    buffer_t    *tmpbuf;
+    char        *argstr;
 };
 
 void on_open(struct bc_parser *parser);
