@@ -4,6 +4,7 @@
 #include <string.h>
 #include "parser.h"
 #include "proxy.h"
+#include "buffer.h"
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -18,8 +19,8 @@ int main(int argc, char **argv) {
     sscanf(argv[1], "%zu", &bufsz);
     buf = malloc(bufsz);
 
-    st.argbuf = malloc(4096);
-    st.obuf = malloc(4096);
+    st.tmpbuf = buffer_new(4096);
+    st.obuf = buffer_new(4096);
     parser.data = &st;
 
     parser.on_open = on_open;
@@ -29,7 +30,7 @@ int main(int argc, char **argv) {
     parser.on_arg_end = on_arg_end;
     while ((n = read(STDIN_FILENO, buf, bufsz)) > 0) {
         bc_parse(&parser, buf, n);
-        write(STDOUT_FILENO, st.obuf, st.olen);
-        st.olen = 0;
+        write(STDOUT_FILENO, st.obuf->data, st.obuf->len);
+        buffer_clear(st.obuf);
     }
 }
