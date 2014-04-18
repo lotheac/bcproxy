@@ -14,7 +14,11 @@
 #define XTERM_256_FMT "\033[%d;5;%dm"
 
 void on_open(struct bc_parser *parser) {
-    parser = parser;
+    /* If we already have stuff in tmpbuf, we need to clear it to properly
+     * handle this tag. on_close does just that, even though we only have part
+     * of the tag text at this point. TODO maybe create a stack of tmp buffers
+     * and push a new one here instead */
+    on_close(parser);
 }
 
 void on_close(struct bc_parser *parser) {
