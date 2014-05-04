@@ -6,26 +6,33 @@
 #include "proxy.h"
 #include "buffer.h"
 
-#define BAT_MAPPER "BAT_MAPPER;;"
-#define UNKNOWN_TAG "[unknown tag %d]%s[/]\n"
-#define PROTS "[prots]"
 #define XTERM_FG_DEFAULT "\033[39m"
 #define XTERM_BG_DEFAULT "\033[49m"
 #define XTERM_256_FMT "\033[%d;5;%dm"
 
 void on_open(struct bc_parser *parser) {
     /* If we already have stuff in tmpbuf, we need to clear it to properly
-     * handle this tag. on_close does just that, even though we only have part
-     * of the tag text at this point. TODO maybe create a stack of tmp buffers
-     * and push a new one here instead */
-    on_close(parser);
+     * handle this tag. on_close would do that but we have already modified the
+     * parser's state (the code has changed). For now, hack around this by
+     * calling on_close with the partial content in tmpbuf that we have using
+     * the previous code.
+     * TODO maybe create a stack of states and push a new one here instead. */
+    if (parser->in_tag
+        /* if len is 0, we haven't seen anything inside this tag yet, so no
+         * need to call the callback */
+        && ((struct proxy_state *)parser->data)->tmpbuf->len) {
+        on_close(parser);
+    }
 }
 
 void on_close(struct bc_parser *parser) {
     struct proxy_state *st = parser->data;
+    /* We only need a short prefix of tmpbuf for string operations */
+    char tmpstr[16];
+    unsigned len = 16 < st->tmpbuf->len ? 16 : st->tmpbuf->len;
+    memcpy(tmpstr, st->tmpbuf->data, len);
+    tmpstr[len-1] = '\0';
 
-    /* NULL-terminate tmpbuf to allow string operations on it */
-    buffer_append(st->tmpbuf, "", 1);
     switch (parser->code) {
         case 5: /* connection success */
         case 6: /* connection failure */
@@ -37,9 +44,9 @@ void on_close(struct bc_parser *parser) {
                     /* Parser removes GOAHEAD; see discussion in parser.c */
                     buffer_append(st->obuf, "\377\371", 2);
                     break;
-                } else if (strcmp(st->argstr, "spec_map") == 0 &&
-                           strcmp(st->tmpbuf->data, "NoMapSupport") == 0) {
-                    break;
+                } else if (strcmp(st->argstr, "spec_map") == 0) {
+                        if (strcmp(tmpstr, "NoMapSupport") == 0)
+                            break;
                 }
             }
             buffer_append_buf(st->obuf, st->tmpbuf);
@@ -80,26 +87,24 @@ void on_close(struct bc_parser *parser) {
         case 54: /* player status */
             break;
         case 64: /* prot status */
-            buffer_append(st->obuf, PROTS, sizeof(PROTS));
-            /* NOTE: this includes a NUL but that's ok */
+            buffer_append(st->obuf, "[prots]", strlen("[prots]"));
             buffer_append_buf(st->obuf, st->tmpbuf);
             buffer_append(st->obuf, "\n", 1);
             break;
         case 99:
-            if (strncmp(st->tmpbuf->data,
-                        BAT_MAPPER,
-                        sizeof(BAT_MAPPER) - 1) == 0) {
+            if (strcmp(tmpstr, "BAT_MAPPER;;") == 0) {
+                /* TODO store mapper data */
             }
             break;
         default: {
-            char *str;
-            int len = snprintf(NULL, 0, UNKNOWN_TAG, parser->code,
-                               st->tmpbuf->data);
-            str = malloc(len + 1);
-            if (str) {
-                sprintf(str, UNKNOWN_TAG, parser->code, st->tmpbuf->data);
+            char *str = NULL;
+            int len = asprintf(&str, "[unknown tag %d(truncated)]%s[/]\n",
+                               parser->code,
+                               tmpstr);
+            if (str)
                 buffer_append(st->obuf, str, len);
-            }
+            else
+                perror("asprintf");
             free(str);
             break;
         }
@@ -117,6 +122,9 @@ void on_tag_text(struct bc_parser *parser, const char *buf, size_t len) {
 
 void on_arg_end(struct bc_parser *parser) {
     struct proxy_state *st = parser->data;
+    /* XXX We assume that control code arguments don't contain NUL bytes, but
+     * if they do, the failure is graceful: string comparisons fail earlier
+     * instead of at the end of the allocated buffer */
     st->argstr = malloc(st->tmpbuf->len + 1);
     if (st->argstr) {
         memcpy(st->argstr, st->tmpbuf->data, st->tmpbuf->len);
