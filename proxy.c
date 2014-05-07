@@ -68,7 +68,7 @@ void on_close(struct bc_parser *parser) {
 #endif
             }
             buffer_append_buf(st->obuf, st->tmpbuf);
-            buffer_append(st->obuf, XTERM_FG_DEFAULT, sizeof(XTERM_FG_DEFAULT));
+            buffer_append(st->obuf, XTERM_FG_DEFAULT, strlen(XTERM_FG_DEFAULT));
             break;
         case 22: /* Bold */
         case 23: /* Italic */
