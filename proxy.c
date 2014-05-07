@@ -26,7 +26,7 @@ void on_close(struct bc_parser *parser) {
     struct proxy_state *st = parser->data;
     /* We only need a short prefix of tmpbuf for string operations */
     char tmpstr[16];
-    unsigned len = 16 < st->tmpbuf->len ? 16 : st->tmpbuf->len;
+    unsigned len = 16 < st->tmpbuf->len + 1 ? 16 : st->tmpbuf->len + 1;
     memcpy(tmpstr, st->tmpbuf->data, len);
     tmpstr[len-1] = '\0';
 
