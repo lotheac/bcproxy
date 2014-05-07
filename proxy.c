@@ -11,21 +11,18 @@
 #define XTERM_256_FMT "\033[%d;5;%dm"
 
 void on_open(struct bc_parser *parser) {
-    /* If we already have stuff in tmpbuf, we need to clear it to properly
-     * handle this tag. on_close would do that but we have already modified the
-     * parser's state (the code has changed). For now, hack around this by
-     * calling on_close with the partial content in tmpbuf that we have using
-     * the previous code.
-     * TODO maybe create a stack of states and push a new one here instead. */
-    if (parser->in_tag
-        /* if len is 0, we haven't seen anything inside this tag yet, so no
-         * need to call the callback */
-        && ((struct proxy_state *)parser->data)->tmpbuf->len) {
+    struct proxy_state *st = parser->data;
+    /* If we are already inside a tag and there is something pending output, we
+     * need to either clear it (output incomplete tag) or have the next tag's
+     * processed output appended to it so that we get the entire processed
+     * contents contents of the outer tag in on_close. For now, let's just do
+     * the first option. */
+    if (st->tmpbuf->len || st->argstr)
         on_close(parser);
-    }
 }
 
 void on_close(struct bc_parser *parser) {
+    assert(parser->tag);
     struct proxy_state *st = parser->data;
     /* We only need a short prefix of tmpbuf for string operations */
     char tmpstr[16];
@@ -33,7 +30,7 @@ void on_close(struct bc_parser *parser) {
     memcpy(tmpstr, st->tmpbuf->data, len);
     tmpstr[len-1] = '\0';
 
-    switch (parser->code) {
+    switch (parser->tag->code) {
         case 5: /* connection success */
         case 6: /* connection failure */
             break;
@@ -99,7 +96,7 @@ void on_close(struct bc_parser *parser) {
         default: {
             char *str = NULL;
             int len = asprintf(&str, "[unknown tag %d(truncated)]%s[/]\n",
-                               parser->code,
+                               parser->tag->code,
                                tmpstr);
             if (str)
                 buffer_append(st->obuf, str, len);

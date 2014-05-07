@@ -1,6 +1,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
 #include "parser.h"
 
 #define ESC '\033'
@@ -24,10 +27,41 @@ static void callback_data(struct bc_parser *parser, const char *buf, size_t len)
     assert(parser->state == s_text);
     if (!buf)
         return;
-    if (parser->in_tag && parser->on_tag_text)
+    if (parser->tag && parser->on_tag_text)
         parser->on_tag_text(parser, buf, len);
     else if (parser->on_text)
         parser->on_text(parser, buf, len);
+}
+
+static void tag_push(struct bc_parser *parser, int code) {
+    struct tag *new = malloc(sizeof(struct tag));
+    if (!new) {
+        fprintf(stderr, "parser: ignoring tag %d due to malloc: %s\n",
+                code, strerror(errno));
+        return;
+    }
+    new->prev = parser->tag;
+    new->code = code;
+    parser->tag = new;
+    if (parser->on_open)
+        parser->on_open(parser);
+}
+
+static void tag_pop(struct bc_parser *parser) {
+    struct tag *tag = parser->tag;
+    if (!tag || parser->partial_code != tag->code) {
+        fprintf(stderr, "parser warning: unexpected end tag %d.%s\n",
+                parser->partial_code,
+                tag ? " tag stack:" : "");
+        for (struct tag *cur = tag; cur != NULL; cur = cur->prev) {
+            fprintf(stderr, "\t%d\n", cur->code);
+        }
+        return;
+    }
+    if (parser->on_close)
+        parser->on_close(parser);
+    parser->tag = tag->prev;
+    free(tag);
 }
 
 void bc_parse(struct bc_parser *parser, const char *buf, size_t len) {
@@ -50,14 +84,12 @@ reread:
             case s_esc: {
                 if (ch == '<') {
                     parser->state = s_open;
-                    parser->code = 0;
                 } else if (ch == '|') {
                     parser->state = s_text;
                     if (parser->on_arg_end)
                         parser->on_arg_end(parser);
                 } else if (ch == '>') {
                     parser->state = s_close;
-                    parser->code = 0;
                 } else {
                     parser->state = s_text;
                     /* The previous char (ESC) was part of text, but we can't
@@ -87,8 +119,7 @@ reread:
                  * and unconditionally output it in proxy code. */
                 parser->state = s_text;
                 if (ch != '\371') {
-                    /* MUD probably doesn't use TELNET IAC much but we might as
-                     * well echo it anyway if it wasn't GOAHEAD */
+                    /* Not GOAHEAD, so output the IAC to client */
                     if (p - 1 < buf)
                         callback_data(parser, "\377", 1);
                     else
@@ -102,15 +133,14 @@ reread:
                     parser->state = s_text;
                     break;
                 }
-                parser->code *= 10;
-                parser->code += (ch - '0');
+                parser->partial_code *= 10;
+                parser->partial_code += (ch - '0');
                 if (parser->state == s_open)
                     parser->state = s_open_n;
                 else {
-                    if (parser->on_open)
-                        parser->on_open(parser);
                     parser->state = s_text;
-                    parser->in_tag++;
+                    tag_push(parser, parser->partial_code);
+                    parser->partial_code = 0;
                 }
                 break;
             }
@@ -120,18 +150,14 @@ reread:
                     parser->state = s_text;
                     break;
                 }
-                parser->code *= 10;
-                parser->code += (ch - '0');
+                parser->partial_code *= 10;
+                parser->partial_code += (ch - '0');
                 if (parser->state == s_close)
                     parser->state = s_close_n;
                 else {
-                    if (parser->on_close)
-                        parser->on_close(parser);
                     parser->state = s_text;
-                    /* There are more closing than opening tags sent by bat, so
-                     * cope with it */
-                    if (parser->in_tag != 0)
-                        parser->in_tag--;
+                    tag_pop(parser);
+                    parser->partial_code = 0;
                 }
                 break;
             }
