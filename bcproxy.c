@@ -115,8 +115,7 @@ static int connect_batmud(void) {
         return -1;
     }
 
-    /* Don't send terminating null byte */
-    (void) sendall(sock, BC_ENABLE, sizeof(BC_ENABLE) - 1);
+    (void) sendall(sock, BC_ENABLE, strlen(BC_ENABLE));
 
     return sock;
 }
