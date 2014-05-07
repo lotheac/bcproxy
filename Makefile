@@ -7,7 +7,7 @@ ifeq ($(shell uname),SunOS)
     LDFLAGS += -lsocket -lnsl
 endif
 
-all: bcproxy
+all: bcproxy test_parser
 
 .PHONY: clean
 
