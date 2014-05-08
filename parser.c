@@ -49,15 +49,9 @@ static void tag_push(struct bc_parser *parser, int code) {
 
 static void tag_pop(struct bc_parser *parser) {
     struct tag *tag = parser->tag;
-    if (!tag || parser->partial_code != tag->code) {
-        fprintf(stderr, "parser warning: unexpected end tag %d.%s\n",
-                parser->partial_code,
-                tag ? " tag stack:" : "");
-        for (struct tag *cur = tag; cur != NULL; cur = cur->prev) {
-            fprintf(stderr, "\t%d\n", cur->code);
-        }
+    /* MUD can send some extraneous ending tags */
+    if (!tag || parser->partial_code != tag->code)
         return;
-    }
     if (parser->on_close)
         parser->on_close(parser);
     parser->tag = tag->prev;
