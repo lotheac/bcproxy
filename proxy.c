@@ -67,11 +67,12 @@ void on_close(struct bc_parser *parser) {
                     buffer_append_str(st->obuf, "\377\371");
                     break;
                 } else if (strcmp(st->argstr, "spec_map") == 0) {
-                        if (strcmp(tmpstr, "NoMapSupport") == 0)
-                            break;
+                    if (strcmp(tmpstr, "NoMapSupport") == 0)
+                        break;
+                } else {
+                    buffer_append_str(st->obuf, st->argstr);
+                    buffer_append_str(st->obuf, ": ");
                 }
-                buffer_append_str(st->obuf, st->argstr);
-                buffer_append_str(st->obuf, ": ");
             }
             buffer_append_buf(st->obuf, st->tmpbuf);
             break;
