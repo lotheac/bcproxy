@@ -40,11 +40,11 @@ static void tag_push(struct bc_parser *parser, int code) {
                 code, strerror(errno));
         return;
     }
+    if (parser->on_open)
+        parser->on_open(parser);
     new->prev = parser->tag;
     new->code = code;
     parser->tag = new;
-    if (parser->on_open)
-        parser->on_open(parser);
 }
 
 static void tag_pop(struct bc_parser *parser) {

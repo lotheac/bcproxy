@@ -6,11 +6,8 @@
 #include "parser.h"
 #include "proxy.h"
 #include "buffer.h"
+#include "color.h"
 #include "room.h"
-
-#define XTERM_FG_DEFAULT "\033[39m"
-#define XTERM_BG_DEFAULT "\033[49m"
-#define XTERM_256_FMT "\033[%d;5;%dm"
 
 struct proxy_state *proxy_state_new(size_t bufsize) {
     struct proxy_state *st = calloc(1, sizeof(struct proxy_state));
@@ -83,22 +80,24 @@ void on_close(struct bc_parser *parser) {
         case 20: /* Set fg color */
         case 21: /* Set bg color */
             if (st->argstr) {
-                /* TODO: Recent xterm supports closest match for ISO-8613-3
-                 * color controls (24-bit), but tf doesn't, so we need to to
-                 * approximate the closest match ourselves here and output the
-                 * corresponding 256-color escapes */
-#if 0
-                unsigned r, g, b, color, fg_or_bg;
-                char colorbuf[sizeof(XTERM_256_FMT) + 1]; /* 1 for extra digit */
-                fg_or_bg = 38 + (parser->code - 20) * 10;
-                sscanf(st->argstr, "%2x%2x%2x", &r, &g, &b);
-                /* FIXME: actually create the color */
-                sprintf(colorbuf, XTERM_256_FMT, fg_or_bg, color);
-                buffer_append(st->obuf, colorbuf, sizeof(XTERM_256_FMT));
-#endif
+                /* Recent xterm supports closest match for ISO-8613-3 color
+                 * controls (24-bit), but tf doesn't, so we need to do the
+                 * approximation ourselves. */
+                uint32_t rgb;
+                char *out = NULL;
+                int is_fg = parser->tag->code == 20;
+                sscanf(st->argstr, "%6x", &rgb);
+                asprintf(&out,"\033[%1$u8;5;%um%s\033[%1$u9m",
+                         is_fg ? 3 : 4,
+                         rgb_to_xterm(rgb),
+                         tmpstr);
+                if (!out) {
+                    perror("color asprintf");
+                    break;
+                }
+                buffer_append_str(st->obuf, out);
+                free(out);
             }
-            buffer_append_buf(st->obuf, st->tmpbuf);
-            buffer_append_str(st->obuf, XTERM_FG_DEFAULT);
             break;
         case 22: /* Bold */
         case 23: /* Italic */
@@ -165,7 +164,7 @@ void on_close(struct bc_parser *parser) {
             if (str)
                 buffer_append(st->obuf, str, len);
             else
-                perror("asprintf");
+                perror("default asprintf");
             free(str);
             break;
         }

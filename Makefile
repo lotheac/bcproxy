@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Werror -Wall -Wextra -pedantic -O2 -g
+CFLAGS = -std=c99 -Werror -Wall -Wextra -pedantic -O0 -g
 CPPFLAGS = -D_XOPEN_SOURCE=600
 
 ifeq ($(shell uname),SunOS)
@@ -16,9 +16,9 @@ tags: *.c
 cscope.out: *.c
 	cscope -bR
 
-test_parser: test_parser.c parser.c proxy.c buffer.c room.c
+test_parser: test_parser.c parser.c proxy.c buffer.c room.c color.c
 
-bcproxy: bcproxy.c parser.c proxy.c buffer.c room.c
+bcproxy: bcproxy.c parser.c proxy.c buffer.c room.c color.c
 
 clean:
 	rm -f test_parser bcproxy
