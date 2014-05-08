@@ -13,15 +13,13 @@ int main(int argc, char **argv) {
     char *buf;
     ssize_t n;
     struct bc_parser parser = { 0 };
-    struct proxy_state st = { 0 };
+    struct proxy_state *st = proxy_state_new(4096);
     size_t bufsz;
 
     sscanf(argv[1], "%zu", &bufsz);
     buf = malloc(bufsz);
 
-    st.tmpbuf = buffer_new(4096);
-    st.obuf = buffer_new(4096);
-    parser.data = &st;
+    parser.data = st;
 
     parser.on_open = on_open;
     parser.on_close = on_close;
@@ -30,7 +28,9 @@ int main(int argc, char **argv) {
     parser.on_arg_end = on_arg_end;
     while ((n = read(STDIN_FILENO, buf, bufsz)) > 0) {
         bc_parse(&parser, buf, n);
-        write(STDOUT_FILENO, st.obuf->data, st.obuf->len);
-        buffer_clear(st.obuf);
+        write(STDOUT_FILENO, st->obuf->data, st->obuf->len);
+        buffer_clear(st->obuf);
     }
+    free(buf);
+    proxy_state_free(st);
 }

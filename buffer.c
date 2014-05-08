@@ -46,6 +46,11 @@ int buffer_append_buf(buffer_t *buf, const buffer_t *ibuf) {
     return buffer_append(buf, ibuf->data, ibuf->len);
 }
 
+int buffer_append_str(buffer_t *buf, const char *str) {
+    size_t len = strlen(str);
+    return buffer_append(buf, str, len);
+}
+
 void buffer_clear(buffer_t *buf) {
     buf->len = 0;
 }

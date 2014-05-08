@@ -11,6 +11,7 @@
 #include <string.h>
 #include "parser.h"
 #include "proxy.h"
+#include "room.h"
 
 #define BATHOST "batmud.bat.org"
 #define BATPORT "23"
@@ -134,19 +135,14 @@ static int handle_connection(int client) {
     const int nfds = (server > client ? server : client) + 1;
     ssize_t recvd, sent, bytes_to_send;
 
-    struct proxy_state st = { 0 };
-    st.obuf = buffer_new(BUFSZ);
-    if (!st.obuf) {
-        perror("creating outbut buffer");
+    struct proxy_state *st = proxy_state_new(BUFSZ);
+    if (!st) {
+        fprintf(stderr, "failed to allocate proxy_state\n");
         goto out;
     }
-    st.tmpbuf = buffer_new(BUFSZ);
-    if (!st.tmpbuf) {
-        perror("creating tmp buffer");
-        goto out;
-    }
+
     struct bc_parser parser = {
-        .data = &st,
+        .data = st,
         .on_open = on_open,
         .on_text = on_text,
         .on_tag_text = on_tag_text,
@@ -195,9 +191,9 @@ retry_select:
         } else {
             bc_parse(&parser, ibuf, recvd);
             /* Callbacks will fill obuf. */
-            bytes_to_send = st.obuf->len;
-            sent = sendall(to, st.obuf->data, st.obuf->len);
-            buffer_clear(st.obuf);
+            bytes_to_send = st->obuf->len;
+            sent = sendall(to, st->obuf->data, st->obuf->len);
+            buffer_clear(st->obuf);
         }
         if (sent != bytes_to_send) {
             fprintf(stderr, "sent only %zd bytes out of %zd to %s\n",
@@ -210,8 +206,7 @@ retry_select:
 
     status = 0;
 out:
-    buffer_free(st.obuf);
-    buffer_free(st.tmpbuf);
+    proxy_state_free(st);
     (void) shutdown(server, SHUT_RDWR);
     (void) shutdown(client, SHUT_RDWR);
     return status;

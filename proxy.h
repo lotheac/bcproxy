@@ -7,7 +7,11 @@ struct proxy_state {
     buffer_t    *obuf;
     buffer_t    *tmpbuf;
     char        *argstr;
+    struct room *room;
 };
+
+struct proxy_state *proxy_state_new(size_t bufsize);
+void proxy_state_free(struct proxy_state *state);
 
 void on_open(struct bc_parser *parser);
 void on_close(struct bc_parser *parser);

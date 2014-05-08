@@ -16,9 +16,9 @@ tags: *.c
 cscope.out: *.c
 	cscope -bR
 
-test_parser: test_parser.c parser.c proxy.c buffer.c
+test_parser: test_parser.c parser.c proxy.c buffer.c room.c
 
-bcproxy: bcproxy.c parser.c proxy.c buffer.c
+bcproxy: bcproxy.c parser.c proxy.c buffer.c room.c
 
 clean:
 	rm -f test_parser bcproxy

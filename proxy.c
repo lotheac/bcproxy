@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -5,10 +6,35 @@
 #include "parser.h"
 #include "proxy.h"
 #include "buffer.h"
+#include "room.h"
 
 #define XTERM_FG_DEFAULT "\033[39m"
 #define XTERM_BG_DEFAULT "\033[49m"
 #define XTERM_256_FMT "\033[%d;5;%dm"
+
+struct proxy_state *proxy_state_new(size_t bufsize) {
+    struct proxy_state *st = calloc(1, sizeof(struct proxy_state));
+    if (!st)
+        goto err;
+    st->obuf = buffer_new(bufsize);
+    st->tmpbuf = buffer_new(bufsize);
+    if (!st->obuf || !st->tmpbuf)
+        goto err;
+    return st;
+err:
+    proxy_state_free(st);
+    return NULL;
+}
+
+void proxy_state_free(struct proxy_state *state) {
+    if (state) {
+        buffer_free(state->obuf);
+        buffer_free(state->tmpbuf);
+        free(state->argstr);
+        room_free(state->room);
+        free(state);
+    }
+}
 
 void on_open(struct bc_parser *parser) {
     struct proxy_state *st = parser->data;
@@ -24,11 +50,13 @@ void on_open(struct bc_parser *parser) {
 void on_close(struct bc_parser *parser) {
     assert(parser->tag);
     struct proxy_state *st = parser->data;
-    /* We only need a short prefix of tmpbuf for string operations */
-    char tmpstr[16];
-    unsigned len = 16 < st->tmpbuf->len + 1 ? 16 : st->tmpbuf->len + 1;
-    memcpy(tmpstr, st->tmpbuf->data, len);
-    tmpstr[len-1] = '\0';
+    /* Make sure tmpbuf is null terminated. It might have other nulls besides,
+     * but that's ok. */
+    buffer_append(st->tmpbuf, "", 1);
+    /* Set the length back to what it was so that we don't include the NUL
+     * output where we don't want to. */
+    st->tmpbuf->len -= 1;
+    char *tmpstr = st->tmpbuf->data;
 
     switch (parser->tag->code) {
         case 5: /* connection success */
@@ -39,12 +67,14 @@ void on_close(struct bc_parser *parser) {
                 if (strcmp(st->argstr, "spec_prompt") == 0) {
                     buffer_append_buf(st->obuf, st->tmpbuf);
                     /* Parser removes GOAHEAD; see discussion in parser.c */
-                    buffer_append(st->obuf, "\377\371", 2);
+                    buffer_append_str(st->obuf, "\377\371");
                     break;
                 } else if (strcmp(st->argstr, "spec_map") == 0) {
                         if (strcmp(tmpstr, "NoMapSupport") == 0)
                             break;
                 }
+                buffer_append_str(st->obuf, st->argstr);
+                buffer_append_str(st->obuf, ": ");
             }
             buffer_append_buf(st->obuf, st->tmpbuf);
             break;
@@ -68,7 +98,7 @@ void on_close(struct bc_parser *parser) {
 #endif
             }
             buffer_append_buf(st->obuf, st->tmpbuf);
-            buffer_append(st->obuf, XTERM_FG_DEFAULT, strlen(XTERM_FG_DEFAULT));
+            buffer_append_str(st->obuf, XTERM_FG_DEFAULT);
             break;
         case 22: /* Bold */
         case 23: /* Italic */
@@ -77,25 +107,59 @@ void on_close(struct bc_parser *parser) {
         case 31: /* "in-game link" */
             buffer_append_buf(st->obuf, st->tmpbuf);
             break;
+        case 40: /* clear skill/spell status */
+        case 41: /* spell rounds left */
+        case 42: /* skill rounds left */
         case 50: /* full hp/sp/ep status */
         case 51: /* partial hp/sp/ep status */
         case 52: /* player name, race, level etc. and exp */
         case 53: /* exp */
         case 54: /* player status */
+        case 60: /* player location */
             break;
         case 64: /* prot status */
-            buffer_append(st->obuf, "[prots]", strlen("[prots]"));
+            buffer_append_str(st->obuf, "[prots]");
             buffer_append_buf(st->obuf, st->tmpbuf);
-            buffer_append(st->obuf, "\n", 1);
+            buffer_append_str(st->obuf, "\n");
+            break;
+        case 70: /* target health */
+            buffer_append_str(st->obuf, "[target]");
+            buffer_append_buf(st->obuf, st->tmpbuf);
+            buffer_append_str(st->obuf, "\n");
             break;
         case 99:
-            if (strcmp(tmpstr, "BAT_MAPPER;;") == 0) {
-                /* TODO store mapper data */
+            /* We use another program to parse and store the mapper data */
+            if (strncmp(tmpstr, "BAT_MAPPER;;", strlen("BAT_MAPPER;;")) == 0) {
+                char *msg = NULL;
+                struct room *new = NULL;
+                if (strcmp(tmpstr, "BAT_MAPPER;;REALM_MAP") == 0) {
+                    asprintf(&msg, "Exited to map from %s.\n",
+                             st->room ?  st->room->area : "(unknown)");
+                } else {
+                    new = room_new(tmpstr);
+                    if (!new) {
+                        fprintf(stderr, "failed to allocate new room: \n%s\n",
+                                tmpstr);
+                        break;
+                    }
+                    if (!st->room || strcmp(st->room->area, new->area) != 0)
+                        asprintf(&msg, "Entered area %s with direction %s\n",
+                                 new->area, new->direction);
+                    else
+                        asprintf(&msg, "Moved (%s) --%s-> (%s)\n", st->room->id,
+                                 new->direction, new->id);
+                }
+                room_free(st->room);
+                st->room = new;
+                if (msg) {
+                    buffer_append_str(st->obuf, msg);
+                    free(msg);
+                }
             }
             break;
         default: {
             char *str = NULL;
-            int len = asprintf(&str, "[unknown tag %d(truncated)]%s[/]\n",
+            int len = asprintf(&str, "[unknown tag %d]%s\n",
                                parser->tag->code,
                                tmpstr);
             if (str)
