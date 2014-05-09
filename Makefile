@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Werror -Wall -Wextra -pedantic -O0 -g
+CFLAGS = -std=c99 -Wall -Wextra -pedantic -O2 -g
 CPPFLAGS = -D_XOPEN_SOURCE=600
 
 ifeq ($(shell uname),SunOS)
