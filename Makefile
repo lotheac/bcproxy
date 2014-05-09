@@ -6,6 +6,9 @@ ifeq ($(shell uname),SunOS)
     CPPFLAGS += -D__EXTENSIONS__
     LDFLAGS += -lsocket -lnsl
 endif
+ifeq ($(shell uname),Linux)
+    CPPFLAGS += -D_GNU_SOURCE
+endif
 
 all: bcproxy test_parser
 
