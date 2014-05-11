@@ -88,7 +88,7 @@ void on_close(struct bc_parser *parser) {
                 char *out = NULL;
                 int is_fg = parser->tag->code == 20;
                 sscanf(st->argstr, "%6x", &rgb);
-                asprintf(&out,"\033[%1$u8;5;%2$um%3$s\033[%1$u9m",
+                asprintf(&out,"\033[%1$u8;5;%2$um%3$s\033[0m",
                          is_fg ? 3 : 4,
                          rgb_to_xterm(rgb),
                          tmpstr);
