@@ -37,7 +37,7 @@ struct room *room_new(const char *mapmsg) {
     NEXT(room->area);
     NEXT(room->id);
     NEXT(room->direction);
-    SKIP(); /* unknown flag */
+    NEXT(room->unknown); /* unknown flag */
     NEXT(room->shortdesc);
     NEXT(room->longdesc);
     NEXT(room->exits);
@@ -56,6 +56,7 @@ void room_free(struct room *room) {
         free(room->area);
         free(room->id);
         free(room->direction);
+        free(room->unknown);
         free(room->shortdesc);
         free(room->longdesc);
         free(room->exits);
