@@ -84,7 +84,7 @@ void on_close(struct bc_parser *parser) {
                 } else if (strcmp(st->argstr, "spec_map") == 0) {
                     if (strcmp(tmpstr, "NoMapSupport") == 0)
                         break;
-                } else {
+                } else if (strcmp(st->argstr, "spec_news") != 0) {
                     buffer_append_str(st->obuf, st->argstr);
                     buffer_append_str(st->obuf, ": ");
                 }
