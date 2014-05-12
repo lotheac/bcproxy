@@ -40,8 +40,18 @@ void on_open(struct bc_parser *parser) {
      * processed output appended to it so that we get the entire processed
      * contents contents of the outer tag in on_close. For now, let's just do
      * the first option. */
-    if (st->tmpbuf->len || st->argstr)
+    if (parser->tag && (st->tmpbuf->len || st->argstr))
         on_close(parser);
+}
+
+void on_prompt(struct bc_parser *parser) {
+    struct proxy_state *st = parser->data;
+    /* Output deferred stuff. If there is none, this is a GOAHEAD *not*
+     * following a 10 closing tag; it'll get passed to client normally. */
+    if (st->tmpbuf->len) {
+        buffer_append_buf(st->obuf, st->tmpbuf);
+        buffer_clear(st->tmpbuf);
+    }
 }
 
 void on_close(struct bc_parser *parser) {
@@ -54,6 +64,7 @@ void on_close(struct bc_parser *parser) {
      * output where we don't want to. */
     st->tmpbuf->len -= 1;
     char *tmpstr = st->tmpbuf->data;
+    int defer = 0;
 
     switch (parser->tag->code) {
         case 5: /* connection success */
@@ -62,9 +73,13 @@ void on_close(struct bc_parser *parser) {
         case 10: /* Message with type */
             if (st->argstr) {
                 if (strcmp(st->argstr, "spec_prompt") == 0) {
-                    buffer_append_buf(st->obuf, st->tmpbuf);
-                    /* Parser removes GOAHEAD; see discussion in parser.c */
-                    buffer_append_str(st->obuf, "\377\371");
+                    /* The MUD sends spec_prompt messages every second in
+                     * addition to prompting after user input. The periodic
+                     * messages are *not* followed by TELNET GOAHEAD, but the
+                     * other ones are, and we don't want to output the periodic
+                     * prompts, so defer output to on_prompt (ie. avoid
+                     * clearing tmpbuf). */
+                    defer = 1;
                     break;
                 } else if (strcmp(st->argstr, "spec_map") == 0) {
                     if (strcmp(tmpstr, "NoMapSupport") == 0)
@@ -173,7 +188,8 @@ void on_close(struct bc_parser *parser) {
 
     free(st->argstr);
     st->argstr = NULL;
-    buffer_clear(st->tmpbuf);
+    if (!defer)
+        buffer_clear(st->tmpbuf);
 }
 
 void on_tag_text(struct bc_parser *parser, const char *buf, size_t len) {

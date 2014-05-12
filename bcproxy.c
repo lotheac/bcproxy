@@ -148,6 +148,7 @@ static int handle_connection(int client) {
         .on_tag_text = on_tag_text,
         .on_arg_end = on_arg_end,
         .on_close = on_close,
+        .on_prompt = on_prompt,
     };
 
     for(;;) {

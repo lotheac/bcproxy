@@ -24,6 +24,8 @@ struct bc_parser {
                                 'ESC|'. */
     bc_notify   on_open;     /* Called when a tag is opened. */
     bc_notify   on_close;    /* Called when a tag is closed. */
+    bc_notify   on_prompt;   /* Called upon TELNET GOAHEAD after closing tag
+                                number 10, ie. ESC 10\xFF\xF9 */
     void        *data;       /* application data pointer; not used by parser */
     struct tag  *tag;
     /* Private */

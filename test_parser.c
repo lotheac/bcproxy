@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
     parser.on_text = on_text;
     parser.on_tag_text = on_tag_text;
     parser.on_arg_end = on_arg_end;
+    parser.on_prompt = on_prompt;
     while ((n = read(STDIN_FILENO, buf, bufsz)) > 0) {
         bc_parse(&parser, buf, n);
         write(STDOUT_FILENO, st->obuf->data, st->obuf->len);

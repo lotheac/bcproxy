@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include "parser.h"
 
-#define ESC '\033'
 #define IS_DIGIT(c) ((c) >= '0' && (c) <= '9')
 
 enum state {
@@ -17,14 +16,16 @@ enum state {
     s_open_n,   /* ESC<[0-9] */
     s_close,    /* ESC> */
     s_close_n,  /* ESC>[0-9] */
-    s_iac,      /* TELNET IAC \377 (\xFF) */
+    s_after_10, /* After closing tag 10; on_prompt is only called with
+                   ESC>20\xFF\xF9 */
+    s_iac,      /* TELNET IAC \377 (\xFF) after closing tag 10 */
 };
 
 /* Calls text or tag_text callback depending on parser state. Does nothing if
  * either buf or the callback function is NULL, but asserts that parser is in
  * the correct state. */
 static void callback_data(struct bc_parser *parser, const char *buf, size_t len) {
-    assert(parser->state == s_text);
+    assert(parser->state == s_text || parser->state == s_iac);
     if (!buf)
         return;
     if (parser->tag && parser->on_tag_text)
@@ -66,10 +67,18 @@ void bc_parse(struct bc_parser *parser, const char *buf, size_t len) {
         char ch = *p;
 reread:
         switch (parser->state) {
+            case s_after_10:
+                if (ch == '\377') {
+                    parser->state = s_iac;
+                    break;
+                }
+                else
+                    parser->state = s_text;
+                /* fallthru */
             case s_text: {
-                if (ch == ESC || ch == '\377') {
+                if (ch == '\033') {
                     callback_data(parser, text_start, p - text_start);
-                    parser->state = ch == ESC ? s_esc : s_iac;
+                    parser->state = s_esc;
                     text_start = NULL;
                 } else if (!text_start)
                     text_start = p;
@@ -99,28 +108,17 @@ reread:
                 break;
             }
             case s_iac:
-                /* This is a special case; the MUD sends additional prompt
-                 * messages every second in BC mode, and "normal" prompt
-                 * messages are wrapped in BC protocol as well, but they will
-                 * be followed by TELNET GOAHEAD (not inside the tag). Proxy
-                 * code could just append GOAHEAD to account for the periodic
-                 * messages, but we can't have two consecutive GOAHEADs since
-                 * that will make clients show an empty prompt line. Proxy code
-                 * could also buffer some more to see whether it needs to
-                 * output GOAHEAD or not, but it would delay prompt output
-                 * until next packet from server if GOAHEAD wasn't present.
-                 * Just don't consider GOAHEAD part of the text in the parser,
-                 * and unconditionally output it in proxy code. */
-                parser->state = s_text;
-                if (ch != '\371') {
-                    /* Not GOAHEAD, so output the IAC to client */
+                if (ch == '\371') {
+                    if (parser->on_prompt)
+                        parser->on_prompt(parser);
+                    /* Sam deal as with ESC above */
                     if (p - 1 < buf)
                         callback_data(parser, "\377", 1);
                     else
                         text_start = p - 1;
-                    goto reread;
                 }
-                break;
+                parser->state = s_text;
+                goto reread;
             case s_open:
             case s_open_n: {
                 if (!IS_DIGIT(ch)) {
@@ -149,7 +147,10 @@ reread:
                 if (parser->state == s_close)
                     parser->state = s_close_n;
                 else {
-                    parser->state = s_text;
+                    if (parser->partial_code == 10)
+                        parser->state = s_after_10;
+                    else
+                        parser->state = s_text;
                     tag_pop(parser);
                     parser->partial_code = 0;
                 }
@@ -157,6 +158,6 @@ reread:
             }
         }
     }
-    if (parser->state == s_text)
+    if (text_start)
         callback_data(parser, text_start, p - text_start);
 }
