@@ -55,6 +55,8 @@ static int bindall(const char *servname) {
             perror("socket");
             continue;
         }
+        int one = 1;
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
         if (0 == bind(sock, rp->ai_addr, rp->ai_addrlen)) {
             fprintf(stderr, "success\n");
             goto cleanup;
