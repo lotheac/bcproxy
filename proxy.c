@@ -102,8 +102,11 @@ void on_close(struct bc_parser *parser) {
                 uint32_t rgb;
                 char *out = NULL;
                 int is_fg = parser->tag->code == 20;
-                sscanf(st->argstr, "%6x", &rgb);
-                asprintf(&out,"\033[%u8;5;%um%s\033[0m",
+                if (sscanf(st->argstr, "%6x", &rgb) != 1) {
+                    perror("color sscanf");
+                    break;
+                }
+                asprintf(&out, "\033[%u8;5;%um%s\033[0m",
                          is_fg ? 3 : 4,
                          rgb_to_xterm(rgb),
                          tmpstr);
@@ -125,12 +128,47 @@ void on_close(struct bc_parser *parser) {
         case 40: /* clear skill/spell status */
         case 41: /* spell rounds left */
         case 42: /* skill rounds left */
-        case 50: /* full hp/sp/ep status */
-        case 51: /* partial hp/sp/ep status */
+            break;
+        case 50: { /* full hp/sp/ep status */
+            int hp, hpmax, sp, spmax, ep, epmax;
+            if (sscanf(st->tmpbuf->data, "%d %d %d %d %d %d", &hp, &hpmax, &sp,
+                       &spmax, &ep, &epmax) != 6) {
+                perror("full health status sscanf");
+                break;
+            }
+            char *out = NULL;
+            asprintf(&out, "[fhp]%d/%d %d/%d %d/%d\n", hp, hpmax, sp, spmax,
+                     ep, epmax);
+            if (!out) {
+                perror("full health status asprintf");
+                break;
+            }
+            buffer_append_str(st->obuf, out);
+            free(out);
+            break;
+        }
+        case 51: { /* partial hp/sp/ep status */
+            int hp, sp, ep;
+            if (sscanf(st->tmpbuf->data, "%d %d %d", &hp, &sp, &ep) != 6) {
+                perror("partial health status sscanf");
+                break;
+            }
+            char *out = NULL;
+            asprintf(&out, "[hp]%d %d %d\n", hp, sp, ep);
+            if (!out) {
+                perror("partial health status asprintf");
+                break;
+            }
+            buffer_append_str(st->obuf, out);
+            free(out);
+            break;
+        }
         case 52: /* player name, race, level etc. and exp */
         case 53: /* exp */
         case 54: /* player status */
         case 60: /* player location */
+        case 62: /* party status */
+        case 63: /* player left party */
             break;
         case 64: /* prot status */
             buffer_append_str(st->obuf, "[prots]");
@@ -143,7 +181,6 @@ void on_close(struct bc_parser *parser) {
             buffer_append_str(st->obuf, "\n");
             break;
         case 99:
-            /* We use another program to parse and store the mapper data */
             if (strncmp(tmpstr, "BAT_MAPPER;;", strlen("BAT_MAPPER;;")) == 0) {
                 char *msg = NULL;
                 struct room *new = NULL;
