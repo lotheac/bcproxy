@@ -130,6 +130,7 @@ void on_close(struct bc_parser *parser) {
         case 42: /* skill rounds left */
             break;
         case 50: { /* full hp/sp/ep status */
+#ifdef ENABLE_FULLHP
             int hp, hpmax, sp, spmax, ep, epmax;
             if (sscanf(st->tmpbuf->data, "%d %d %d %d %d %d", &hp, &hpmax, &sp,
                        &spmax, &ep, &epmax) != 6) {
@@ -145,6 +146,7 @@ void on_close(struct bc_parser *parser) {
             }
             buffer_append_str(st->obuf, out);
             free(out);
+#endif
             break;
         }
         case 51: { /* partial hp/sp/ep status */
