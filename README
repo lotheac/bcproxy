@@ -1,0 +1,14 @@
+This is a proxy intended to sit between your telnet MUD client and BatMUD. It
+turns on "BatClient-mode" and filters the BatClient messages the server sends.
+
+Compiling
+=========
+
+If you have GNU make, 'make' or 'gmake' should suffice.
+
+TODO
+====
+
+- Store mapper information in a database
+- Create tools to query mapper database and draw map graphs
+- use a real build system, improve portability
