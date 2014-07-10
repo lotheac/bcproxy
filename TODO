@@ -1,0 +1,3 @@
+- Store mapper information in a database
+- Create tools to query mapper database and draw map graphs
+- use a real build system, improve portability

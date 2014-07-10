@@ -1,14 +1,119 @@
 This is a proxy intended to sit between your telnet MUD client and BatMUD. It
 turns on "BatClient-mode" and filters the BatClient messages the server sends.
 
-Compiling
-=========
+This was originally written as a project for an university course; for lack of
+actual docs, here's the report I submitted.
 
-If you have GNU make, 'make' or 'gmake' should suffice.
+BatMUD proxy
+============
 
-TODO
+The program is a TCP proxy that sits between BatMUD and the user's
+telnet MUD client. Compilation (tested on illumos and Linux) should
+succeed with just 'make' in the source directory.
+
+There are two executables generated: 'bcproxy' and 'test_parser'. The
+former listens on the loopback interface and given port for TCP
+connections and upon receiving one initiates a connection to BatMUD
+(address set at compile-time) and starts translating stuff from
+batclient-protocol to something more manageable. The latter program does
+the same, but locally - it does not initiate connections or listen on
+anything, but instead reads from standard input, N bytes at a time where
+N is given on the command line.
+
+There is an example input file shipped as 'example_session.log'. It
+contains many escapes as sent by the MUD, and can be fed as input to
+test parser as follows:
+
+    ./test_parser 1 < example_session.log
+
+Here I used a buffer size of 1, meaning the program reads one byte at a
+time. For reference, here's the buffer size distribution for a short
+running-around session in the MUD (quantized bytes received per recv()
+call, courtesy of DTrace):
+
+           value  ------------- Distribution ------------- count
+              -1 |                                         0
+               0 |                                         1
+               1 |                                         0
+               2 |@                                        2
+               4 |                                         0
+               8 |                                         0
+              16 |                                         0
+              32 |@                                        3
+              64 |@@                                       6
+             128 |@@@@@@@@                                 23
+             256 |@@@                                      8
+             512 |@@@                                      10
+            1024 |@@@@@@@@@@@@@@@@@@@@@@                   62
+            2048 |                                         0
+
+(most recv's returned between 1024 and 2047 bytes)
+
+Features/functionality
+======================
+
+Currently the proxy discards most unwanted messages and transforms
+desired information into a readable/line-buffered state so that the
+telnet client can match on it:
+
+- [prots] output gives the number of seconds a spell will continue to
+  affect the player. This makes writing triggers for this *much* easier
+  than before (you had to match on activation/deactivation messages for
+  all possible spells separately!).
+- outerworld maps are color approximated to xterm escapes from the 24bit
+  RGB inputs the MUD sends (this is more colors than the MUD sends
+  normal telnet clients :)
+
+Mapping support is as of yet very minimal; it stores state about which
+room the player is in and outputs messages to the client when the player
+changes rooms. I intend to continue this project by storing this graph
+information in a database and creating a program for viewing maps.
+
+As it is, the proxy is in a usable state for normal play (playing with
+control-code mode turned on *without* such a proxy is damn near
+impossible :). Once I add the storage backend for rooms, I can start
+gathering area data, which is a huge payoff.
+
+If you can't or don't want to run the program yourself there is an
+approximation of example output (logs from my MUD client converted from
+ANSI to HTML) at http://lotheac.fi/s/bcproxy_proto.html - it contains
+two sessions, the former of which was captured without color
+approximation support.
+
+Files
+=====
+
+bcproxy.c and test_parser.c implement the main programs.
+
+There is a parser for the MUD protocol in parser.c. This is basically
+a FSM which reads the input one character at a time since one of the
+goals was to buffer as little as possible. I thought about using
+an implementation of Aho-Corasick instead but decided against it since
+this approach felt simpler since I needed to parse the MUD's control
+codes (which I believe is a context-free grammar because it involves
+matching ESC< ESC> and parsing stuff in between). I believe the FSM
+approach is O(n) since it reads each character at most twice (this only
+applies to the parsing phase; some string comparisons are performed in
+the proxying/filtering code).
+
+proxy.c implements the proxy/filtering code. These are callbacks made
+from the parser upon state changes; they will store state and buffer
+data only as much as is required.
+
+room.c implements a rudimentary data structure that represents a room in
+the MUD as well as a parser for it.
+
+buffer.c implements a simple buffer type, or an array that knows its
+length and size and supports append operations.
+
+color.c implements color approximation from 24-bit RGB space to the 256
+indexed colors xterm uses.
+
+Bugs
 ====
 
-- Store mapper information in a database
-- Create tools to query mapper database and draw map graphs
-- use a real build system, improve portability
+Stacking of control codes is not completely correct (ref.
+proxy.c:on_open), which means that setting both background and
+foreground colors doesn't work currently. The MUD doesn't do this often
+though. This is fixable by allocating a new buffer in on_open (which I
+will implement at some point).
