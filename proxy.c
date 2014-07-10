@@ -197,11 +197,13 @@ void on_close(struct bc_parser *parser) {
                         break;
                     }
                     if (!st->room || strcmp(st->room->area, new->area) != 0)
-                        asprintf(&msg, "Entered area %s with direction %s, unk=%s\n",
-                                 new->area, new->direction, new->unknown);
+                        asprintf(&msg, "Entered area %s with direction %s, %sdoors\n",
+                                 new->area, new->direction,
+                                 new->indoors ? "in" : "out");
                     else
-                        asprintf(&msg, "Moved (%s) --%s-> (%s), unk=%s\n", st->room->id,
-                                 new->direction, new->id, new->unknown);
+                        asprintf(&msg, "Moved (%s) --%s-> (%s), %sdoors\n",
+                                 st->room->id, new->direction, new->id,
+                                 new->indoors ? "in" : "out");
                 }
                 room_free(st->room);
                 st->room = new;

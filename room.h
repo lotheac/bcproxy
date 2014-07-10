@@ -5,10 +5,10 @@ struct room {
     char *area;
     char *id;
     char *direction;
-    char *unknown;
     char *shortdesc;
     char *longdesc;
     char *exits;
+    int  indoors;
 };
 
 struct room *room_new(const char *mapmsg);
