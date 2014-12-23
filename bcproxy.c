@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <err.h>
 #include "parser.h"
 #include "proxy.h"
 #include "room.h"
@@ -36,8 +37,7 @@ bindall(const char *servname)
 	result = NULL;
 	ret = getaddrinfo(NULL, servname, &hints, &result);
 	if (ret != 0) {
-		fprintf(stderr, "bindall: getaddrinfo: %s\n",
-		    gai_strerror(ret));
+		warnx("bindall: getaddrinfo: %s", gai_strerror(ret));
 		goto cleanup;
 	}
 
@@ -150,7 +150,7 @@ handle_connection(int client)
 	int server = connect_batmud();
 	if (server == -1)
 		return -1;
-	fprintf(stderr, "connected to batmud\n");
+	warnx("connected to batmud");
 
 	fd_set rset;
 	const int nfds = (server > client ? server : client) + 1;
@@ -158,7 +158,7 @@ handle_connection(int client)
 
 	struct proxy_state *st = proxy_state_new(BUFSZ);
 	if (!st) {
-		fprintf(stderr, "failed to allocate proxy_state\n");
+		warnx("failed to allocate proxy_state");
 		goto out;
 	}
 
@@ -199,7 +199,7 @@ retry_select:
 			perror("handle_connection: recv");
 			goto out;
 		} else if (recvd == 0) {
-			fprintf(stderr, "%s disconnect\n",
+			warnx("%s disconnect",
 			    from == client ? "client" : "server");
 			status = 0;
 			goto out;
@@ -218,8 +218,7 @@ retry_select:
 			buffer_clear(st->obuf);
 		}
 		if (sent != bytes_to_send) {
-			fprintf(stderr, "sent only %zd of %zd bytes to %s\n",
-			    sent,
+			warnx("sent only %zd of %zd bytes to %s", sent,
 			    bytes_to_send,
 			    to == client ? "client" : "server");
 			goto out;
@@ -241,10 +240,8 @@ main(int argc, char **argv)
 	int listenfd = -1;
 	int conn = -1;
 
-	if (argc != 2) {
-		fprintf(stderr, "usage: bcproxy listening_port\n");
-		return 1;
-	}
+	if (argc != 2)
+		errx(1, "usage: bcproxy listening_port");
 
 	/* send() may cause SIGPIPE so ignore that */
 	sigaction(SIGPIPE,

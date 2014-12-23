@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <err.h>
 #include "parser.h"
 
 #define IS_DIGIT(c) ((c) >= '0' && (c) <= '9')
@@ -43,8 +44,7 @@ tag_push(struct bc_parser *parser, int code)
 {
 	struct tag *new = malloc(sizeof(struct tag));
 	if (!new) {
-		fprintf(stderr, "parser: ignoring tag %d due to malloc: %s\n",
-		    code, strerror(errno));
+		warn("parser: ignoring tag %d due to malloc", code);
 		return;
 	}
 	if (parser->on_open)

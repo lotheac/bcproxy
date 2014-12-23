@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <err.h>
 #include "parser.h"
 #include "proxy.h"
 #include "buffer.h"
@@ -209,8 +210,8 @@ on_close(struct bc_parser *parser)
 			} else {
 				new = room_new(tmpstr);
 				if (!new) {
-					fprintf(stderr, "failed to allocate "
-					    "new room: \n%s\n", tmpstr);
+					warnx("failed to allocate new room: \n"
+					   "%s", tmpstr);
 					break;
 				}
 				if (!st->room || strcmp(st->room->area, new->area) != 0)
