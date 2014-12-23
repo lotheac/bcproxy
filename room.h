@@ -2,11 +2,11 @@
 #define room_h
 
 struct room {
-	char *	area;
 	char *	id;
 	char *	direction;
 	char *	shortdesc;
 	char *	longdesc;
+	char *	area;
 	char *	exits;
 	int	indoors;
 };

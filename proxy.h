@@ -2,16 +2,18 @@
 #define proxy_h
 #include "parser.h"
 #include "buffer.h"
+#include "db.h"
 
 struct proxy_state {
 	buffer *	obuf;
 	buffer *	tmpbuf;
 	char *		argstr;
 	struct room *	room;
+	PGconn *	db;
 };
 
-struct proxy_state *	proxy_state_new(size_t bufsize);
-void			proxy_state_free(struct proxy_state *state);
+struct proxy_state *	proxy_state_new(size_t);
+void			proxy_state_free(struct proxy_state *);
 
 void	on_open(struct bc_parser *);
 void	on_close(struct bc_parser *);

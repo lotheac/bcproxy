@@ -158,7 +158,7 @@ handle_connection(int client)
 
 	struct proxy_state *st = proxy_state_new(BUFSZ);
 	if (!st) {
-		warnx("failed to allocate proxy_state");
+		warnx("failed to initialize proxy_state");
 		goto out;
 	}
 

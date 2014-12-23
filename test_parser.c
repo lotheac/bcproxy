@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <err.h>
 #include "parser.h"
 #include "proxy.h"
 #include "buffer.h"
@@ -16,6 +17,8 @@ main(int argc, char **argv)
 	ssize_t n;
 	struct bc_parser parser = { 0 };
 	struct proxy_state *st = proxy_state_new(4096);
+	if (!st)
+		errx(1, "proxy state init failed");
 	size_t bufsz;
 
 	sscanf(argv[1], "%zu", &bufsz);

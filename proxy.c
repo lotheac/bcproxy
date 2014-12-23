@@ -20,6 +20,13 @@ proxy_state *proxy_state_new(size_t bufsize)
 	st->tmpbuf = buffer_new(bufsize);
 	if (!st->obuf || !st->tmpbuf)
 		goto err;
+	st->db = PQconnectdb("dbname=batmud");
+	if (PQstatus(st->db) != CONNECTION_OK) {
+		warnx("PQconnectdb: %s", PQerrorMessage(st->db));
+		goto err;
+	}
+	if (db_init(st->db) < 0)
+		goto err;
 	return st;
 err:
 	proxy_state_free(st);
@@ -34,6 +41,7 @@ proxy_state_free(struct proxy_state *state)
 		buffer_free(state->tmpbuf);
 		free(state->argstr);
 		room_free(state->room);
+		PQfinish(state->db);
 		free(state);
 	}
 }
@@ -214,16 +222,19 @@ on_close(struct bc_parser *parser)
 					   "%s", tmpstr);
 					break;
 				}
+				db_add_room(st->db, new);
 				if (!st->room || strcmp(st->room->area, new->area) != 0)
 					asprintf(&msg, "Entered area %s with "
 					    "direction %s, %sdoors\n",
 					    new->area, new->direction,
 					    new->indoors ? "in" : "out");
-				else
+				else {
 					asprintf(&msg, "Moved (%s) --%s-> "
 					    "(%s),%sdoors\n", st->room->id,
 					    new->direction, new->id,
 					    new->indoors ? "in" : "out");
+					db_add_exit(st->db, st->room, new);
+				}
 			}
 			room_free(st->room);
 			st->room = new;
