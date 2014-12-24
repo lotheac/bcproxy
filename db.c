@@ -27,7 +27,7 @@ db_init(PGconn *db)
 	    "destination TEXT,"
 	    "FOREIGN KEY(source) REFERENCES room(id),"
 	    "FOREIGN KEY(destination) REFERENCES room(id),"
-	    "PRIMARY KEY(source, destination));");
+	    "PRIMARY KEY(direction, source, destination));");
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		warnx("db_init: %s", PQerrorMessage(db));
 		status = -1;
