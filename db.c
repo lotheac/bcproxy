@@ -2,12 +2,17 @@
 #include <err.h>
 #include "db.h"
 
-int
-db_init(PGconn *db)
+PGconn *
+db_init(void)
 {
-	int status = 0;
+	PGconn *db = NULL;
+	PGresult *res = NULL;
+
+	db = PQconnectdb("dbname=batmud");
+	if (PQstatus(db) != CONNECTION_OK)
+		goto err;
 	/* XXX just a prototype db format for now */
-	PGresult *res = PQexec(db,
+	res = PQexec(db,
 	    "CREATE TABLE IF NOT EXISTS room ("
 	    /*
 	     * These things look a little like apr1 hashes but
@@ -28,12 +33,16 @@ db_init(PGconn *db)
 	    "FOREIGN KEY(source) REFERENCES room(id),"
 	    "FOREIGN KEY(destination) REFERENCES room(id),"
 	    "PRIMARY KEY(direction, source, destination));");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		warnx("db_init: %s", PQerrorMessage(db));
-		status = -1;
-	}
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+		goto err;
 	PQclear(res);
-	return status;
+	return db;
+
+err:
+	warnx("db_init: %s", PQerrorMessage(db));
+	PQclear(res);
+	PQfinish(db);
+	return NULL;
 }
 
 int

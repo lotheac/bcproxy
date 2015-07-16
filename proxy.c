@@ -9,6 +9,7 @@
 #include "buffer.h"
 #include "color.h"
 #include "room.h"
+#include "db.h"
 
 struct
 proxy_state *proxy_state_new(size_t bufsize)
@@ -20,12 +21,8 @@ proxy_state *proxy_state_new(size_t bufsize)
 	st->tmpbuf = buffer_new(bufsize);
 	if (!st->obuf || !st->tmpbuf)
 		goto err;
-	st->db = PQconnectdb("dbname=batmud");
-	if (PQstatus(st->db) != CONNECTION_OK) {
-		warnx("PQconnectdb: %s", PQerrorMessage(st->db));
-		goto err;
-	}
-	if (db_init(st->db) < 0)
+	st->db = db_init();
+	if (!st->db)
 		goto err;
 	return st;
 err:
