@@ -7,9 +7,10 @@ actual docs, here's the report I submitted.
 BatMUD proxy
 ============
 
-The program is a TCP proxy that sits between BatMUD and the user's
-telnet MUD client. Compilation (tested on illumos and Linux) should
-succeed with just 'make' in the source directory.
+The program is a TCP proxy that sits between BatMUD and the user's telnet MUD
+client. Compilation uses BSD make or bmake, and should succeed by just running
+that in the source directory, provided you have the dependencies (libpq)
+installed.
 
 There are two executables generated: 'bcproxy' and 'test_parser'. The
 former listens on the loopback interface and given port for TCP

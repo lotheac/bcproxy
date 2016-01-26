@@ -42,16 +42,10 @@ bindall(const char *servname)
 	}
 
 	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		/*
-		 * NI_MAXHOST / NI_MAXSERV are defined in RFC 2553 which is
-		 * obsoleted by RFC 3493; they are not available on illumos
-		 * when conforming to _XOPEN_SOURCE=600. For numeric host and
-		 * serv these are enough.
-		 */
-		char host[INET6_ADDRSTRLEN], serv[6];
+		char host[NI_MAXHOST], serv[NI_MAXSERV];
 		fprintf(stderr, "bindall: binding to ");
 		ret = getnameinfo(rp->ai_addr, rp->ai_addrlen, host,
-		    INET6_ADDRSTRLEN, serv, 6, NI_NUMERICHOST |
+		    NI_MAXHOST, serv, NI_MAXSERV, NI_NUMERICHOST |
 		    NI_NUMERICSERV);
 		if (ret != 0)
 			fprintf(stderr, "<unknown> (getnameinfo: %s)",
@@ -143,7 +137,7 @@ connect_batmud(void)
 #define BUFSZ 4096
 
 static int
-handle_connection(int client)
+handle_connection(int client, struct bc_parser *parser, struct proxy_state *st)
 {
 	char ibuf[BUFSZ];
 	int status = 1;
@@ -155,22 +149,6 @@ handle_connection(int client)
 	fd_set rset;
 	const int nfds = (server > client ? server : client) + 1;
 	ssize_t recvd, sent, bytes_to_send;
-
-	struct proxy_state *st = proxy_state_new(BUFSZ);
-	if (!st) {
-		warnx("failed to initialize proxy_state");
-		goto out;
-	}
-
-	struct bc_parser parser = {
-		.data = st,
-		.on_open = on_open,
-		.on_text = on_text,
-		.on_tag_text = on_tag_text,
-		.on_arg_end = on_arg_end,
-		.on_close = on_close,
-		.on_prompt = on_prompt,
-	};
 
 	for(;;) {
 		int nready;
@@ -211,7 +189,7 @@ retry_select:
 			bytes_to_send = recvd;
 			sent = sendall(to, ibuf, recvd);
 		} else {
-			bc_parse(&parser, ibuf, recvd);
+			bc_parse(parser, ibuf, recvd);
 			/* Callbacks will fill obuf. */
 			bytes_to_send = st->obuf->len;
 			sent = sendall(to, st->obuf->data, st->obuf->len);
@@ -227,10 +205,25 @@ retry_select:
 
 	status = 0;
 out:
-	proxy_state_free(st);
 	(void) shutdown(server, SHUT_RDWR);
 	(void) shutdown(client, SHUT_RDWR);
 	return status;
+}
+
+void
+test_parser(size_t bufsz, struct bc_parser *parser, struct proxy_state *st)
+{
+	char *buf;
+	ssize_t n;
+	buf = malloc(bufsz);
+	if (!buf)
+		errx(1, "test_parser: malloc");
+	while ((n = read(STDIN_FILENO, buf, bufsz)) > 0) {
+		bc_parse(parser, buf, n);
+		write(STDOUT_FILENO, st->obuf->data, st->obuf->len);
+		buffer_clear(st->obuf);
+	}
+	free(buf);
 }
 
 int
@@ -239,6 +232,29 @@ main(int argc, char **argv)
 	int exit_status = 1;
 	int listenfd = -1;
 	int conn = -1;
+
+	struct proxy_state *st = proxy_state_new(BUFSZ);
+	if (!st)
+		errx(1, "failed to initialize proxy_state");
+
+	struct bc_parser parser = {
+		.data = st,
+		.on_open = on_open,
+		.on_text = on_text,
+		.on_tag_text = on_tag_text,
+		.on_arg_end = on_arg_end,
+		.on_close = on_close,
+		.on_prompt = on_prompt,
+	};
+
+	if (strcmp("test_parser", getprogname()) == 0) {
+		size_t bufsz;
+		if (argc != 2 || sscanf(argv[1], "%zu", &bufsz) != 1 ||
+		    bufsz == 0)
+			errx(1, "usage: test_parser buffer_size");
+		test_parser(bufsz, &parser, st);
+		return 0;
+	}
 
 	if (argc != 2)
 		errx(1, "usage: bcproxy listening_port");
@@ -265,7 +281,8 @@ retry_accept:
 		goto exit;
 	}
 
-	exit_status = handle_connection(conn);
+	exit_status = handle_connection(conn, &parser, st);
+	proxy_state_free(st);
 exit:
 	if (conn != -1)
 		while (-1 == close(conn) && EINTR == errno);
