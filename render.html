@@ -76,7 +76,8 @@ s.settings({
   drawEdgeLabels: true,
   edgeLabelSize: 'proportional',
   labelThreshold: 9,
-  labelSize: 8,
+  labelSize: 'fixed',
+  labelSizeRatio: 0.1,
   defaultNodeType: 'longdesc',
 });
 sigma.parsers.json('data.json', s, function() { s.refresh(); });
