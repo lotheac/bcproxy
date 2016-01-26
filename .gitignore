@@ -1,3 +1,4 @@
-/*.o
-/*.d
-/.depend
+/obj/
+/logs/
+/tags
+/cscope.out
