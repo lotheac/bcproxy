@@ -6,6 +6,14 @@ import sys
 import json
 import random
 
+# TODO: cardinal-position map drawing works very well. Figure out how to split
+# into subgraphs that don't need explicit positioning, OR, draw as completely
+# separate graphs (losing connecting edges maybe, but get some other method?)
+
+# we ALSO need subgraphs for disconnected nodes (ie. nodes not found in the
+# traversal; use them as new starting points for traversal until we have
+# visited the entire forest)
+
 G = networkx.MultiDiGraph()
 
 conn = psycopg2.connect('dbname=batmud')
@@ -47,6 +55,8 @@ visited = set()
 def place(node, x, y):
     G.node[node]['x'] = x
     G.node[node]['y'] = y
+    if (x,y) in grid:
+        print("COLLISION",file=sys.stderr)
     grid[x, y] = node
 
 def visit(node):
@@ -63,13 +73,16 @@ def visit(node):
             if direction in posmod:
                 dx, dy = posmod[direction]
                 newpos = (nattrs['x'] + dx, nattrs['y'] + dy)
-                if newpos in grid:
-                    print("COLLISION",file=sys.stderr)
-                    import pdb;pdb.set_trace()
                 place(nbr, *newpos)
                 break
             else:
-                place(nbr, 4,4)
+                print("new subarea...", file=sys.stderr)
+                # XXX really not a good way to place. we can't really guess
+                # whether there's going to be enough space for an entire
+                # subgraph whereever we're placing it; maybe we should build
+                # another one recursively and then find some space where it
+                # fits?
+                place(nbr, nattrs['x'] + 4, nattrs['y'] + 6)
 
     visited.add(node)
     # and then recurse into them if necessary
@@ -95,6 +108,7 @@ for src, tgtdict in G.edge.items():
             }
             if not direction in posmod:
                 edge['label'] = direction
+                edge['type'] = 'curve'
                 edge['color'] = '#9e9'
             edges.append(edge)
 
