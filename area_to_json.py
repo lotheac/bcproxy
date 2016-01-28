@@ -14,9 +14,6 @@ import random
 # traversal; use them as new starting points for traversal until we have
 # visited the entire forest)
 
-# NB: if we could drag the entire subgraphs, that would delegate lots of the
-# problems to the user.
-
 G = networkx.MultiDiGraph()
 
 conn = psycopg2.connect('dbname=batmud')
@@ -84,7 +81,7 @@ def visit(node):
                 # whether there's going to be enough space for an entire
                 # subgraph whereever we're placing it; maybe we should build
                 # another one recursively and then find some space where it
-                # fits, but that sounds a bit difficult
+                # fits?
                 place(nbr, nattrs['x'] + 4, nattrs['y'] + 6)
 
     visited.add(node)
