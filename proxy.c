@@ -225,13 +225,8 @@ on_close(struct bc_parser *parser)
 					    "direction %s, %sdoors\n",
 					    new->area, new->direction,
 					    new->indoors ? "in" : "out");
-				else {
-					asprintf(&msg, "Moved (%s) --%s-> "
-					    "(%s),%sdoors\n", st->room->id,
-					    new->direction, new->id,
-					    new->indoors ? "in" : "out");
+				else
 					db_add_exit(st->db, st->room, new);
-				}
 			}
 			room_free(st->room);
 			st->room = new;
