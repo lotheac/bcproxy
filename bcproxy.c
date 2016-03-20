@@ -140,10 +140,10 @@ static int
 handle_connection(int client, struct bc_parser *parser, struct proxy_state *st)
 {
 	char ibuf[BUFSZ];
-	int status = 1;
+	int status = -1;
 	int server = connect_batmud();
 	if (server == -1)
-		return -1;
+		return status;
 	warnx("connected to batmud");
 
 	fd_set rset;
@@ -281,7 +281,7 @@ retry_accept:
 		goto exit;
 	}
 
-	exit_status = handle_connection(conn, &parser, st);
+	exit_status = handle_connection(conn, &parser, st) == 0 ? 0 : 1;
 	proxy_state_free(st);
 exit:
 	if (conn != -1)
