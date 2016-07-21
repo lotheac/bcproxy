@@ -6,7 +6,7 @@ COPTS+=		-std=c99 -Wall -Wextra -pedantic
 LINKS=		${BINDIR}/${PROG} ${BINDIR}/test_parser
 MAN=
 
-.if !empty(HOST_OS) && exists(${.CURDIR}/${HOST_OS}.mk)
-.include "${HOST_OS}.mk"
+.if !empty(HOST_OS)
+.-include "${HOST_OS}.mk"
 .endif
 .include <bsd.prog.mk>
