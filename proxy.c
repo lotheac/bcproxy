@@ -205,7 +205,7 @@ on_close(struct bc_parser *parser)
 		buffer_append_buf(st->obuf, st->tmpbuf);
 		buffer_append_str(st->obuf, "\n");
 		break;
-	case 99:
+	case 99: /* mapper; requires 'set client_mapper_toggle on' ingame */
 		if (strncmp(tmpstr, "BAT_MAPPER;;", strlen("BAT_MAPPER;;")) == 0) {
 			char *msg = NULL;
 			struct room *new = NULL;
