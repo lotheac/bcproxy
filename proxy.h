@@ -22,5 +22,6 @@ void	on_prompt(struct bc_parser *);
 
 void	on_text(struct bc_parser *, const char *, size_t);
 void	on_tag_text(struct bc_parser *, const char *, size_t);
+void	on_telnet_command(struct bc_parser *, const char *, size_t);
 
 #endif /* proxy_h */

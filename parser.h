@@ -31,6 +31,8 @@ struct bc_parser {
 	/* Called upon TELNET GOAHEAD after closing tag number 10, ie. ESC
 	 * 10\xFF\xF9 */
 	bc_notify	on_prompt;
+	/* Called on any other TELNET commands */
+	bc_callback	on_telnet_command;
 	/* application data pointer; not used by parser */
 	void		*data;
 	struct		tag *tag;

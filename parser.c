@@ -17,26 +17,43 @@ enum state {
 	s_open_n,	/* ESC<[0-9] */
 	s_close,	/* ESC> */
 	s_close_n,	/* ESC>[0-9] */
-	s_after_10,	/* After closing tag 10; on_prompt is only called with
+	s_iac,		/* TELNET IAC (\xff) */
+	s_iac_will,	/* TELNET IAC + WILL */
+	s_iac_wont,	/* TELNET IAC + WONT */
+	s_iac_do,	/* TELNET IAC + DO */
+	s_iac_dont,	/* TELNET IAC + DONT */
+	s_prompt_tag,	/* After closing tag 10; on_prompt is only called with
 			 * ESC>20\xFF\xF9 */
-	s_iac,		/* TELNET IAC \377 (\xFF) after closing tag 10 */
+	s_prompt_iac,	/* TELNET IAC after closing tag 10 */
 };
 
 /*
- * Calls text or tag_text callback depending on parser state. Does nothing if
- * either buf or the callback function is NULL, but asserts that parser is in
- * the correct state.
+ * Calls the correct callback depending on parser state.
  */
 static void
 callback_data(struct bc_parser *parser, const char *buf, size_t len)
 {
-	assert(parser->state == s_text || parser->state == s_iac);
 	if (!buf)
 		return;
-	if (parser->tag && parser->on_tag_text)
-		parser->on_tag_text(parser, buf, len);
-	else if (parser->on_text)
-		parser->on_text(parser, buf, len);
+	switch(parser->state) {
+	case s_text:
+		if (parser->tag && parser->on_tag_text)
+			parser->on_tag_text(parser, buf, len);
+		else if (parser->on_text)
+			parser->on_text(parser, buf, len);
+		break;
+	case s_iac:
+	case s_iac_will:
+	case s_iac_wont:
+	case s_iac_do:
+	case s_iac_dont:
+		assert((len == 2 || len == 3) && *buf == '\xff');
+		if (parser->on_telnet_command)
+			parser->on_telnet_command(parser, buf, len);
+		break;
+	default:
+		abort(); /* invalid parser state */
+	}
 }
 
 static void
@@ -77,19 +94,19 @@ bc_parse(struct bc_parser *parser, const char *buf, size_t len)
 		char ch = *p;
 reread:
 		switch (parser->state) {
-		case s_after_10:
-			if (ch == '\377') {
-				parser->state = s_iac;
+		case s_prompt_tag:
+			if (ch == '\xff') {
+				parser->state = s_prompt_iac;
 				break;
 			}
 			else
 				parser->state = s_text;
-			/* FALLTHROUGH */
+			goto reread;
 		case s_text: {
-			if (ch == '\033') {
+			if (ch == '\x1b' || ch == '\xff') {
 				callback_data(parser, text_start, p -
 				    text_start);
-				parser->state = s_esc;
+				parser->state = ch == '\x1b' ? s_esc : s_iac;
 				text_start = NULL;
 			} else if (!text_start)
 				text_start = p;
@@ -114,7 +131,7 @@ reread:
 				 * callback for it here.
 				 */
 				if (p - 1 < buf)
-					callback_data(parser, "\033", 1);
+					callback_data(parser, "\x1b", 1);
 				else
 					text_start = p - 1;
 				goto reread;
@@ -122,14 +139,60 @@ reread:
 			break;
 		}
 		case s_iac:
-			if (ch == '\371') {
+			switch (ch) {
+			case '\xff':
+				/* TELNET-escaped 0xff byte */
+				parser->state = s_text;
+				goto reread;
+			case '\xfb':
+				parser->state = s_iac_will;
+				break;
+			case '\xfc':
+				parser->state = s_iac_wont;
+				break;
+			case '\xfd':
+				parser->state = s_iac_do;
+				break;
+			case '\xfe':
+				parser->state = s_iac_dont;
+				break;
+			default: {
+				/* 2-byte telnet command */
+				char telnetcmd[2] = { '\xff', ch };
+				callback_data(parser, telnetcmd, 2);
+				parser->state = s_text;
+				break;
+			}
+			}
+			break;
+		case s_iac_will:
+		case s_iac_wont:
+		case s_iac_do:
+		case s_iac_dont: {
+			/* 3-byte telnet command */
+			char optcmd = '\x00';
+			if (parser->state == s_iac_will)
+				optcmd = '\xfb';
+			else if (parser->state == s_iac_wont)
+				optcmd = '\xfc';
+			else if (parser->state == s_iac_do)
+				optcmd = '\xfd';
+			else if (parser->state == s_iac_dont)
+				optcmd = '\xfe';
+			char telnetcmd[3] = { '\xff', optcmd, ch };
+			callback_data(parser, telnetcmd, 3);
+			parser->state = s_text;
+			break;
+		}
+		case s_prompt_iac:
+			if (ch == '\xf9') {
 				if (parser->on_prompt)
 					parser->on_prompt(parser);
-				/* Sam deal as with ESC above */
-				if (p - 1 < buf)
-					callback_data(parser, "\377", 1);
-				else
-					text_start = p - 1;
+				/* Previous char (IAC) was not leading up to
+				 * this state; this is some other telnet
+				 * command */
+				parser->state = s_iac;
+				goto reread;
 			}
 			parser->state = s_text;
 			goto reread;
@@ -162,7 +225,7 @@ reread:
 				parser->state = s_close_n;
 			else {
 				if (parser->partial_code == 10)
-					parser->state = s_after_10;
+					parser->state = s_prompt_tag;
 				else
 					parser->state = s_text;
 				tag_pop(parser);

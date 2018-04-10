@@ -49,6 +49,43 @@ buffer_append(buffer *buf, const char *input, size_t len)
 }
 
 int
+buffer_append_iso8859_1(buffer *buf, const char *input, size_t len)
+{
+	/* Worst case: every input character is invalid, and we need 3 output
+	 * bytes (U+FFFD in UTF-8) */
+	if (buf->len + 3*len > buf->sz) {
+		size_t newsz = 3*len + buf->sz;
+		char *newp = realloc(buf->data, newsz);
+		if (!newp)
+			return -1;
+		buf->data = newp;
+		buf->sz = newsz;
+	}
+	uint8_t *out = (uint8_t *) buf->data + buf->len;
+	const uint8_t *in;
+	uint8_t *end = (uint8_t *) input + len;
+	for (in = (const uint8_t *) input; in < end; in++) {
+		if (*in <= 0x7e)
+			*out++ = *in;
+		else if (*in >= 0xa0) {
+			/* use *in as unicode codepoint. our codepoints are
+			 * thus 8 bits, 2 of which will be in the first byte
+			 * and the rest in the second byte. */
+			*out++ = 0xc0 | (*in >> 6);
+			*out++ = 0x80 | (*in & 0x3f);
+		} else {
+			/* unknown character. use U+FFFD. */
+			*out++ = 0xef;
+			*out++ = 0xbf;
+			*out++ = 0xbd;
+		}
+	}
+	size_t bytes = out - (uint8_t *)(buf->data + buf->len);
+	buf->len += bytes;
+	return 0;
+}
+
+int
 buffer_append_buf(buffer *buf, const buffer *ibuf)
 {
 	return buffer_append(buf, ibuf->data, ibuf->len);

@@ -259,7 +259,7 @@ void
 on_tag_text(struct bc_parser *parser, const char *buf, size_t len)
 {
 	struct proxy_state *st = parser->data;
-	buffer_append(st->tmpbuf, buf, len);
+	buffer_append_iso8859_1(st->tmpbuf, buf, len);
 }
 
 void
@@ -284,6 +284,14 @@ on_arg_end(struct bc_parser *parser)
 void
 on_text(struct bc_parser *parser, const char *buf, size_t len)
 {
+	struct proxy_state *st = parser->data;
+	buffer_append_iso8859_1(st->obuf, buf, len);
+}
+
+void
+on_telnet_command(struct bc_parser *parser, const char *buf, size_t len)
+{
+	/* Pass this as is - MUD clients usually understand TELNET */
 	struct proxy_state *st = parser->data;
 	buffer_append(st->obuf, buf, len);
 }

@@ -1,15 +1,16 @@
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <netdb.h>
-#include <errno.h>
-#include <stdio.h>
-#include <signal.h>
 #include <assert.h>
+#include <err.h>
+#include <errno.h>
+#include <locale.h>
+#include <netdb.h>
+#include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <err.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include "parser.h"
 #include "proxy.h"
 #include "room.h"
@@ -134,21 +135,21 @@ connect_batmud(void)
 	return sock;
 }
 
-#define BUFSZ 4096
+#define BUFSZ 2048
 
 static int
 handle_connection(int client, struct bc_parser *parser, struct proxy_state *st)
 {
 	char ibuf[BUFSZ];
 	int status = -1;
-	int server = connect_batmud();
-	if (server == -1)
-		return status;
-	warnx("connected to batmud");
+	int server;
 
 	fd_set rset;
-	const int nfds = (server > client ? server : client) + 1;
 	ssize_t recvd, sent, bytes_to_send;
+	if ((server = connect_batmud()) < 0)
+		errx(1, "failed to connect");
+	warnx("connected to batmud");
+	const int nfds = (server > client ? server : client) + 1;
 
 	for(;;) {
 		int nready;
@@ -184,15 +185,15 @@ retry_select:
 		}
 
 		if (from == client) {
-			/* We don't do anything for data coming from the
-			 * client; just send it along. */
+			/* TODO convert utf8->iso8859-1, except for telnet
+			 * command bytes client may send */
 			bytes_to_send = recvd;
-			sent = sendall(to, ibuf, recvd);
+			sent = sendall(to, ibuf, bytes_to_send);
 		} else {
+			/* parser handles ISO-8859-1->UTF-8 conversion */
 			bc_parse(parser, ibuf, recvd);
-			/* Callbacks will fill obuf. */
 			bytes_to_send = st->obuf->len;
-			sent = sendall(to, st->obuf->data, st->obuf->len);
+			sent = sendall(to, st->obuf->data, bytes_to_send);
 			buffer_clear(st->obuf);
 		}
 		if (sent != bytes_to_send) {
@@ -245,7 +246,11 @@ main(int argc, char **argv)
 		.on_arg_end = on_arg_end,
 		.on_close = on_close,
 		.on_prompt = on_prompt,
+		.on_telnet_command = on_telnet_command,
 	};
+
+	if (!setlocale(LC_CTYPE, ""))
+		err(1, "setlocale");
 
 	if (strcmp("test_parser", getprogname()) == 0) {
 		size_t bufsz;
