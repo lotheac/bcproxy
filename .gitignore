@@ -2,3 +2,5 @@
 /logs/
 /tags
 /cscope.out
+/config.h
+/config/out

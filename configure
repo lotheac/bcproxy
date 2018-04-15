@@ -1,0 +1,19 @@
+#!/bin/sh -e
+
+# hand-written configure script; autoconf is no fun
+exec 3> config.h
+exec 4> config.mk
+echo '#ifndef CONFIG_H' >&3
+echo '#define CONFIG_H' >&3
+CC=${CC-cc}
+
+printf "checking for libtls: "
+if ${CC} -o config/out config/libtls_test.c -ltls 2>/dev/null; then
+    echo '#define HAVE_LIBTLS' >&3
+    echo 'LDADD+=   -ltls' >&4
+    echo "yes"
+else
+    echo "no"
+fi
+
+echo '#endif' >&3

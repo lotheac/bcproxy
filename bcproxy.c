@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <locale.h>
 #include <netdb.h>
 #include <signal.h>
@@ -12,6 +13,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "client_parser.h"
+#include "net.h"
 #include "parser.h"
 #include "proxy.h"
 #include "room.h"
@@ -57,19 +59,15 @@ bindall(const char *servname)
 		fprintf(stderr, ": ");
 		sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 		if (-1 == sock) {
-			perror("socket");
+			warn("bindall: socket");
 			continue;
 		}
 		int one = 1;
 		setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
-		if (0 == bind(sock, rp->ai_addr, rp->ai_addrlen)) {
-			fprintf(stderr, "success\n");
-			goto cleanup;
-		} else {
-			perror("bind");
-			while (-1 == close(sock) && EINTR == errno);
-			sock = -1;
-		}
+		if (bind(sock, rp->ai_addr, rp->ai_addrlen) < 0)
+			err(1, "bind");
+		fprintf(stderr, "success\n");
+		goto cleanup;
 	}
 
 cleanup:
@@ -77,65 +75,6 @@ cleanup:
 		freeaddrinfo(result);
 	return sock;
 }
-
-/*
- * Blocking call to send all data out on socket. Prints errors on stderr and
- * returns -1 on error, the number of bytes sent on success.
- */
-ssize_t
-sendall(int fd, const void *buf, size_t len)
-{
-	ssize_t sent = 0;
-	ssize_t ret;
-	while ((size_t) sent < len) {
-		ret = send(fd, (char *)buf + sent, len, 0);
-		if (-1 == ret) {
-			if (EINTR == errno)
-				continue;
-			perror("sendall: send");
-			return -1;
-		} else
-			sent += ret;
-	}
-	return sent;
-}
-
-/*
- * Connects to BatMUD via TCP and enables batclient mode (by sending BC_ENABLE)
- * and returns a fd, or negative value on error.
- */
-static int
-connect_batmud(void)
-{
-	int sock = -1;
-	int ret;
-	struct addrinfo *result, *rp;
-	struct addrinfo hints = {
-		.ai_family = AF_UNSPEC,
-		.ai_socktype = SOCK_STREAM,
-	};
-	ret = getaddrinfo(BATHOST, BATPORT, &hints, &result);
-	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if (sock == -1)
-			continue;
-		ret = connect(sock, rp->ai_addr, rp->ai_addrlen);
-		if (ret != -1)
-			break;
-	}
-	freeaddrinfo(result);
-
-	if (!rp) {
-		if (sock != -1)
-			while (-1 == close(sock) && EINTR == errno);
-		return -1;
-	}
-
-	(void) sendall(sock, BC_ENABLE, strlen(BC_ENABLE));
-
-	return sock;
-}
-
 #define BUFSZ 2048
 
 static int
@@ -143,14 +82,28 @@ handle_connection(int client, struct bc_parser *parser, struct proxy_state *st)
 {
 	char ibuf[BUFSZ], convbuf[BUFSZ];
 	int status = -1;
-	int server;
+	int server = -1;
+	struct tls *ctx;
 
 	fd_set rset;
 	ssize_t recvd, sent, bytes_to_send;
-	if ((server = connect_batmud()) < 0)
+	if ((ctx = connect_batmud(&server)) == NULL)
 		errx(1, "failed to connect");
 	warnx("connected to batmud");
 	const int nfds = (server > client ? server : client) + 1;
+
+	/*
+	 * Set the fd's nonblocking by default and use blocking mode only when
+	 * writing.
+	 */
+	int fds[] = { client, server, -1 };
+	for (int *fd = fds; *fd != -1; fd++) {
+		int flags = fcntl(*fd, F_GETFL, 0);
+		if (flags < 0)
+			err(1, "fcntl F_GETFL");
+		if (fcntl(*fd, F_SETFL, flags | O_NONBLOCK) < 0)
+			err(1, "fcntl F_SETFL");
+	}
 
 	for(;;) {
 		int nready;
@@ -162,23 +115,27 @@ retry_select:
 		if (nready < 0) {
 			if (errno == EINTR)
 				goto retry_select;
-			perror("handle_connection: select");
+			warn("handle_connection: select");
 			goto out;
 		}
 		int from, to;
 		if (FD_ISSET(server, &rset)) {
 			from = server;
 			to = client;
+			recvd = tls_read(ctx, ibuf, BUFSZ);
+			if (recvd < 0)
+				warnx("tls_read: %s", tls_error(ctx));
 		} else {
 			from = client;
 			to = server;
+			recvd = recv(from, ibuf, BUFSZ, 0);
+			if (recvd < 0)
+				warn("recv");
 		}
 
-		recvd = recv(from, ibuf, BUFSZ, MSG_DONTWAIT);
-		if (recvd == -1) {
-			perror("handle_connection: recv");
+		if (recvd < 0)
 			goto out;
-		} else if (recvd == 0) {
+		else if (recvd == 0) {
 			warnx("%s disconnect",
 			    from == client ? "client" : "server");
 			status = 0;
@@ -189,7 +146,7 @@ retry_select:
 			bytes_to_send = client_utf8_to_iso8859_1(convbuf, ibuf,
 			    recvd);
 			assert(bytes_to_send <= recvd);
-			sent = sendall(to, convbuf, bytes_to_send);
+			sent = tls_sendall(ctx, to, convbuf, bytes_to_send);
 		} else {
 			/* parser handles ISO-8859-1->UTF-8 conversion */
 			bc_parse(parser, ibuf, recvd);
@@ -273,18 +230,15 @@ main(int argc, char **argv)
 	listenfd = bindall(argv[1]);
 	if (listenfd < 0)
 		goto exit;
-	if (listen(listenfd, 0) == -1) {
-		perror("listen");
-		goto exit;
-	}
+	if (listen(listenfd, 0) == -1)
+		err(1, "listen");
 
 retry_accept:
 	conn = accept(listenfd, NULL, NULL);
 	if (conn == -1) {
 		if (errno == EINTR)
 			goto retry_accept;
-		perror("accept");
-		goto exit;
+		err(1, "accept");
 	}
 
 	exit_status = handle_connection(conn, &parser, st) == 0 ? 0 : 1;

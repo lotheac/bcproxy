@@ -38,6 +38,7 @@ Setup
 
  - install postgreqsl client libraries (`libpq` or `libpq-dev`) and a
    postgresql server
+ - run `./configure`
  - compile with BSD `make` (available as `bmake` on Linuxes)
  - set up a postgresql database named `batmud`
  - `./bcproxy 1234`
