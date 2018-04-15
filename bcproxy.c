@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include "client_parser.h"
 #include "parser.h"
 #include "proxy.h"
 #include "room.h"
@@ -140,7 +141,7 @@ connect_batmud(void)
 static int
 handle_connection(int client, struct bc_parser *parser, struct proxy_state *st)
 {
-	char ibuf[BUFSZ];
+	char ibuf[BUFSZ], convbuf[BUFSZ];
 	int status = -1;
 	int server;
 
@@ -185,10 +186,10 @@ retry_select:
 		}
 
 		if (from == client) {
-			/* TODO convert utf8->iso8859-1, except for telnet
-			 * command bytes client may send */
-			bytes_to_send = recvd;
-			sent = sendall(to, ibuf, bytes_to_send);
+			bytes_to_send = client_utf8_to_iso8859_1(convbuf, ibuf,
+			    recvd);
+			assert(bytes_to_send <= recvd);
+			sent = sendall(to, convbuf, bytes_to_send);
 		} else {
 			/* parser handles ISO-8859-1->UTF-8 conversion */
 			bc_parse(parser, ibuf, recvd);
