@@ -123,6 +123,9 @@ retry_select:
 			from = server;
 			to = client;
 			recvd = tls_read(ctx, ibuf, BUFSZ);
+			if (recvd == TLS_WANT_POLLIN ||
+			    recvd == TLS_WANT_POLLOUT)
+				continue;
 			if (recvd < 0)
 				warnx("tls_read: %s", tls_error(ctx));
 		} else {
