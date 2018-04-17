@@ -63,13 +63,14 @@ on_prompt(struct bc_parser *parser)
 {
 	struct proxy_state *st = parser->data;
 	/*
-	 * Output deferred stuff. If there is none, this is a GOAHEAD *not*
-	 * following a 10 closing tag; it'll get passed to client normally.
+	 * If tmpbuf is non-empty, output the deferred prompt.
 	 */
 	if (st->tmpbuf->len) {
-		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_iso8859_1(st->obuf, st->tmpbuf->data,
+		    st->tmpbuf->len);
 		buffer_clear(st->tmpbuf);
 	}
+	parser->on_telnet_command(parser, "\xff\xf9", 2);
 }
 
 void

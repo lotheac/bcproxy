@@ -97,10 +97,9 @@ reread:
 		case s_prompt_tag:
 			if (ch == '\xff') {
 				parser->state = s_prompt_iac;
-				break;
+				continue;
 			}
-			else
-				parser->state = s_text;
+			parser->state = s_text;
 			goto reread;
 		case s_text: {
 			if (ch == '\x1b' || ch == '\xff') {
@@ -185,17 +184,15 @@ reread:
 			break;
 		}
 		case s_prompt_iac:
-			if (ch == '\xf9') {
-				if (parser->on_prompt)
-					parser->on_prompt(parser);
-				/* Previous char (IAC) was not leading up to
-				 * this state; this is some other telnet
-				 * command */
+			if (ch != '\xf9') {
+				/* not IAC GA */
 				parser->state = s_iac;
 				goto reread;
 			}
+			if (parser->on_prompt)
+				parser->on_prompt(parser);
 			parser->state = s_text;
-			goto reread;
+			break;
 		case s_open:
 		case s_open_n: {
 			if (!IS_DIGIT(ch)) {
