@@ -154,7 +154,7 @@ retry_select:
 		} else {
 			size_t len = recvd;
 			const char *buf = ibuf;
-			while (len > 0) {
+			while (dumpfd >= 0 && len > 0) {
 				ssize_t nw;
 				if ((nw = write(dumpfd, buf, len)) < 0)
 					err(1, "writing dumpfile");
