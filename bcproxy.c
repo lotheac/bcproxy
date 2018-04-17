@@ -78,7 +78,8 @@ cleanup:
 #define BUFSZ 2048
 
 static int
-handle_connection(int client, struct bc_parser *parser, struct proxy_state *st)
+handle_connection(int client, int dumpfd, struct bc_parser *parser, struct
+    proxy_state *st)
 {
 	char ibuf[BUFSZ], convbuf[BUFSZ];
 	int status = -1;
@@ -151,6 +152,15 @@ retry_select:
 			assert(bytes_to_send <= recvd);
 			sent = tls_sendall(ctx, to, convbuf, bytes_to_send);
 		} else {
+			size_t len = recvd;
+			const char *buf = ibuf;
+			while (len > 0) {
+				ssize_t nw;
+				if ((nw = write(dumpfd, buf, len)) < 0)
+					err(1, "writing dumpfile");
+				buf += nw;
+				len -= nw;
+			}
 			/* parser handles ISO-8859-1->UTF-8 conversion */
 			bc_parse(parser, ibuf, recvd);
 			bytes_to_send = st->obuf->len;
@@ -188,12 +198,22 @@ test_parser(size_t bufsz, struct bc_parser *parser, struct proxy_state *st)
 	free(buf);
 }
 
+void
+usage(void)
+{
+	errx(1, "usage: bcproxy [-w file] listening_port");
+}
+
+extern char *optarg;
+extern int optind;
+
 int
 main(int argc, char **argv)
 {
 	int exit_status = 1;
 	int listenfd = -1;
 	int conn = -1;
+	int dumpfd = -1;
 
 	struct proxy_state *st = proxy_state_new(BUFSZ);
 	if (!st)
@@ -222,15 +242,29 @@ main(int argc, char **argv)
 		return 0;
 	}
 
-	if (argc != 2)
-		errx(1, "usage: bcproxy listening_port");
+	int ch;
+	while ((ch = getopt(argc, argv, "w:")) != -1) {
+		switch (ch) {
+		case 'w':
+			if ((dumpfd = open(optarg, O_WRONLY|O_CREAT, 0644)) < 0)
+				err(1, "%s", optarg);
+			break;
+		default:
+			usage();
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		usage();
 
 	/* send() may cause SIGPIPE so ignore that */
 	sigaction(SIGPIPE,
-	    &(const struct sigaction) { .sa_handler = SIG_IGN },
+	    &(const struct sigaction) { .sa_handler = SIG_IGN, .sa_flags = SA_RESTART },
 	    NULL);
 
-	listenfd = bindall(argv[1]);
+	listenfd = bindall(argv[0]);
 	if (listenfd < 0)
 		goto exit;
 	if (listen(listenfd, 0) == -1)
@@ -244,12 +278,14 @@ retry_accept:
 		err(1, "accept");
 	}
 
-	exit_status = handle_connection(conn, &parser, st) == 0 ? 0 : 1;
+	exit_status = handle_connection(conn, dumpfd, &parser, st) == 0 ? 0 : 1;
 	proxy_state_free(st);
 exit:
 	if (conn != -1)
-		while (-1 == close(conn) && EINTR == errno);
+		close(conn);
+	if (dumpfd != -1)
+		close(dumpfd);
 	if (listenfd != -1)
-		while (-1 == close(listenfd) && EINTR == errno);
+		close(listenfd);
 	return exit_status;
 }
