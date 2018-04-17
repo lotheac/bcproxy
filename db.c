@@ -6,43 +6,11 @@ PGconn *
 db_init(void)
 {
 	PGconn *db = NULL;
-	PGresult *res = NULL;
 
 	db = PQconnectdb("dbname=batmud");
 	if (PQstatus(db) != CONNECTION_OK)
-		goto err;
-	/* XXX just a prototype db format for now */
-	res = PQexec(db,
-	    "CREATE TABLE IF NOT EXISTS room ("
-	    /*
-	     * These things look a little like apr1 hashes but
-	     * aren't, they contain characters not legal for base64:
-	     *    $apr1$dF!!_X#W$zUxMycg35omZ3p973Tllm1
-	     * Just store as text for now.
-	     */
-	    "id TEXT PRIMARY KEY,"
-	    "shortdesc TEXT NOT NULL,"
-	    "longdesc TEXT NOT NULL,"
-	    "area TEXT,"
-	    "indoors BOOLEAN,"
-	    "exits TEXT);"
-	    "CREATE TABLE IF NOT EXISTS exit ("
-	    "direction TEXT,"
-	    "source TEXT,"
-	    "destination TEXT,"
-	    "FOREIGN KEY(source) REFERENCES room(id),"
-	    "FOREIGN KEY(destination) REFERENCES room(id),"
-	    "PRIMARY KEY(direction, source, destination));");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-		goto err;
-	PQclear(res);
+		err(1, "db_init: %s", PQerrorMessage(db));
 	return db;
-
-err:
-	warnx("db_init: %s", PQerrorMessage(db));
-	PQclear(res);
-	PQfinish(db);
-	return NULL;
 }
 
 int

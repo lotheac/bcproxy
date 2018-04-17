@@ -45,12 +45,13 @@ Setup
  - run `./configure`
  - compile with BSD make (`bmake` on Linuxes): `make obj && make`
  - set up a postgresql database named `batmud`
+ - initialize the db `psql batmud < initdb.sql`
  - `obj/bcproxy 1234`
  - connect your mud client to localhost:1234
 
 Bugs
 ====
 
-Stacking of control codes is not completely correct (ref. proxy.c:on_open),
+Stacking of control codes is not completely correct (ref. proxy.c:on\_open),
 which means that setting both background and foreground colors doesn't work
 currently.
