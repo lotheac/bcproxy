@@ -1,0 +1,28 @@
+.Dd April 17, 2018
+.Dt BCPROXY 1
+.Os
+.Sh NAME
+.Nm bcproxy
+.Nd BatMUD BatClient-mode proxy
+.Sh SYNOPSIS
+.Nm bcproxy
+.Op Fl w Ar file
+.Op Ar port
+.Sh DESCRIPTION
+.Nm
+proxies a connection from the user's MUD client to BatMUD.
+It listens locally on TCP port
+.Ar port
+and connects to BatMUD once a local connection is established.
+It tells the BatMUD server to send BatClient-mode data, and filters incoming
+data before passing it to the client.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl w Ar file
+Dump data sent by server to file.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Lk https://www.bat.org/ "BatMUD"
