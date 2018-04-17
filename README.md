@@ -7,6 +7,10 @@ Features
 
  - more colors: 24-bit colors sent by BatMUD are approximated to closest-match
    xterm-256color escapes
+ - tls support (always enabled if LibreSSL/libtls is available; cleartext
+   telnet connections used otherwise)
+ - convert utf-8 from client to iso-8859-1 when sending to server, and vice
+   versa (utf-8 is always used; locales are not taken into account)
  - message classification: different types of messages have their type visible.
    examples:
 ```
