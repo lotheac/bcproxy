@@ -1,15 +1,15 @@
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <assert.h>
 #include <err.h>
-#include "parser.h"
-#include "proxy.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include "buffer.h"
 #include "color.h"
-#include "room.h"
 #include "db.h"
+#include "parser.h"
+#include "proxy.h"
+#include "room.h"
 
 struct
 proxy_state *proxy_state_new(size_t bufsize)
@@ -120,26 +120,20 @@ on_close(struct bc_parser *parser)
 	case 20: /* Set fg color */
 	case 21: /* Set bg color */
 		if (st->argstr) {
-			/* Recent xterm supports closest match for ISO-8613-3
-			 * color controls (24-bit), but tf doesn't, so we need
-			 * to do the approximation ourselves. */
 			uint32_t rgb;
-			char *out = NULL;
 			int is_fg = parser->tag->code == 20;
 			if (sscanf(st->argstr, "%6x", &rgb) != 1) {
-				perror("color sscanf");
+				warnx("color sscanf '%s'", st->argstr);
 				break;
 			}
-			asprintf(&out, "\033[%u8;5;%um%s\033[0m",
-			    is_fg ? 3 : 4,
-			    rgb_to_xterm(rgb),
-			    tmpstr);
-			if (!out) {
-				perror("color asprintf");
-				break;
-			}
-			buffer_append_str(st->obuf, out);
-			free(out);
+			char *color = colorstr_alloc(is_fg,
+			    (rgb >> 16) & 0xff,
+			    (rgb >> 8) & 0xff,
+			    rgb & 0xff);
+			buffer_append_str(st->obuf, color);
+			free(color);
+			buffer_append_str(st->obuf, tmpstr);
+			buffer_append_str(st->obuf, "\x1b[0m");
 		}
 		break;
 	case 22: /* Bold */

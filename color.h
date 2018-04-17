@@ -1,7 +1,8 @@
-#ifndef color_h
-#define color_h
+#ifndef COLOR_H
+#define COLOR_H
+#include <stdbool.h>
 #include <stdint.h>
 
-uint8_t	rgb_to_xterm(uint32_t);
+char *colorstr_alloc(bool, uint8_t, uint8_t, uint8_t);
 
-#endif /* color_h */
+#endif
