@@ -11,6 +11,9 @@
 #include "proxy.h"
 #include "room.h"
 
+/* U+1F37A BEER MUG */
+#define MARKER "\xf0\x9f\x8d\xba"
+
 struct
 proxy_state *proxy_state_new(size_t bufsize)
 {
@@ -174,7 +177,7 @@ on_close(struct bc_parser *parser)
 			break;
 		}
 		char *out = NULL;
-		asprintf(&out, "[hp]%d %d %d\n", hp, sp, ep);
+		asprintf(&out, MARKER "hp %d %d %d\n", hp, sp, ep);
 		if (!out) {
 			perror("partial health status asprintf");
 			break;
@@ -191,12 +194,12 @@ on_close(struct bc_parser *parser)
 	case 63: /* player left party */
 		break;
 	case 64: /* prot status */
-		buffer_append_str(st->obuf, "[prots]");
+		buffer_append_str(st->obuf, MARKER "prots ");
 		buffer_append_buf(st->obuf, st->tmpbuf);
 		buffer_append_str(st->obuf, "\n");
 		break;
 	case 70: /* target health */
-		buffer_append_str(st->obuf, "[target]");
+		buffer_append_str(st->obuf, MARKER "target ");
 		buffer_append_buf(st->obuf, st->tmpbuf);
 		buffer_append_str(st->obuf, "\n");
 		break;
@@ -233,7 +236,7 @@ on_close(struct bc_parser *parser)
 		break;
 	default: {
 		char *str = NULL;
-		int len = asprintf(&str, "[unknown tag %d]%s\n",
+		int len = asprintf(&str, MARKER "unknown tag %d %s\n",
 		    parser->tag->code, tmpstr);
 		if (str)
 			buffer_append(st->obuf, str, len);

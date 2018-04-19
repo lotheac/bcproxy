@@ -2,6 +2,11 @@ This is a TCP proxy intended to sit between your telnet MUD client and BatMUD.
 It turns on "BatClient-mode" and filters the BatClient messages the server
 sends.
 
+Some extra lines are sent to the client by the proxy on reception of BatClient
+messages. Such lines are prefixed with the character 🍺 (U+1F37A BEER MUG,
+encoded as `\xf0\x9f\x8d\xba` in UTF-8) to make it possible to match them in
+your MUD client.
+
 Features
 ========
 
@@ -11,8 +16,10 @@ Features
    telnet connections used otherwise)
  - convert utf-8 from client to iso-8859-1 when sending to server, and vice
    versa (utf-8 is always used; locales are not taken into account)
- - message classification: different types of messages have their type visible.
-   examples:
+ - message classification: some server-sent messages have an additional type
+   visible at the start of the line. these are *not* prefixed with U+1F37A,
+   since the messages would be visible also to normal telnet clients (although
+   without type). examples:
 ```
 chan_tell: You tell Lotheac 'hello'
 spec_spell: You watch with self-pride as your golden arrow hits Adult skunk.
@@ -23,18 +30,18 @@ spec_spell: You watch with self-pride as your golden arrow hits Adult skunk.
  - prots: a line with duration is displayed for every prot status update sent
    by BatMUD. you should set up client triggers for this. example:
 ```
-[prots]force_absorption 805
-[prots]displacement 380
-[prots]force_absorption 802
-[prots]displacement 377
+🍺prots force_absorption 805
+🍺prots displacement 380
+🍺prots force_absorption 802
+🍺prots displacement 377
 ```
  - target status: when BatMUD sends updates about your current target's health
    percentage, a line is printed. examples:
 ```
-[target]Small_shrew 100
+🍺target Small_shrew 100
 <omitted text>
 Small shrew is DEAD, R.I.P.
-[target]0 0
+🍺target 0 0
 ```
 
 Setup
