@@ -194,7 +194,7 @@ on_close(struct bc_parser *parser)
 	case 63: /* player left party */
 		break;
 	case 64: /* prot status */
-		buffer_append_str(st->obuf, MARKER "prots ");
+		buffer_append_str(st->obuf, MARKER "prot ");
 		buffer_append_buf(st->obuf, st->tmpbuf);
 		buffer_append_str(st->obuf, "\n");
 		break;
