@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <err.h>
 #include <errno.h>
 #include <stdlib.h>
 #include "faketls.h"
@@ -19,6 +20,8 @@ struct tls *
 tls_client(void)
 {
 	struct tls *ctx = malloc(sizeof(struct tls));
+	if (!ctx)
+		err(1, "faketls tls_client: malloc");
 	ctx->fd = -1;
 	return ctx;
 }

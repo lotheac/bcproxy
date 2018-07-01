@@ -184,7 +184,7 @@ test_parser(size_t bufsz, struct bc_parser *parser, struct proxy_state *st)
 	ssize_t n;
 	buf = malloc(bufsz);
 	if (!buf)
-		errx(1, "test_parser: malloc");
+		err(1, "test_parser: malloc");
 	while ((n = read(STDIN_FILENO, buf, bufsz)) > 0) {
 		bc_parse(parser, buf, n);
 		write(STDOUT_FILENO, st->obuf->data, st->obuf->len);

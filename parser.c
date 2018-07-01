@@ -60,10 +60,8 @@ static void
 tag_push(struct bc_parser *parser, int code)
 {
 	struct tag *new = malloc(sizeof(struct tag));
-	if (!new) {
-		warn("parser: ignoring tag %d due to malloc", code);
-		return;
-	}
+	if (!new)
+		err(1, "parser: tag %d: malloc", code);
 	if (parser->on_open)
 		parser->on_open(parser);
 	new->prev = parser->tag;

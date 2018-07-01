@@ -1,3 +1,4 @@
+#include <err.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -30,7 +31,7 @@ room_new(const char *mapmsg)
 	len = end - cur + 1;\
 	target = malloc(len);\
 	if (!target)\
-		goto err;\
+		err(1, "room_new: malloc");\
 	strlcpy(target, cur, len);\
 	cur = end + strlen(SEP);\
 } while(0)

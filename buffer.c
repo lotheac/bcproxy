@@ -1,3 +1,4 @@
+#include <err.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,11 +10,8 @@ buffer_new(size_t initial_size)
 {
 	buffer *buf = malloc(sizeof(buffer));
 	char *data = malloc(initial_size);
-	if (!buf || !data) {
-		free(buf);
-		free(data);
-		return NULL;
-	}
+	if (!buf || !data)
+		errx(1, "buffer_new: malloc failed");
 	buf->data = data;
 	buf->len = 0;
 	buf->sz = initial_size;
@@ -40,7 +38,7 @@ buffer_append(buffer *buf, const char *input, size_t len)
 			newsz = buf->sz * 2;
 		char *newp = realloc(buf->data, newsz);
 		if (!newp)
-			return -1;
+			err(1, "buffer_append: realloc");
 		buf->data = newp;
 		buf->sz = newsz;
 	}
@@ -58,7 +56,7 @@ buffer_append_iso8859_1(buffer *buf, const char *input, size_t len)
 		size_t newsz = 3*len + buf->sz;
 		char *newp = realloc(buf->data, newsz);
 		if (!newp)
-			return -1;
+			err(1, "buffer_append_iso8859_1: realloc");
 		buf->data = newp;
 		buf->sz = newsz;
 	}

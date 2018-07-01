@@ -19,7 +19,7 @@ proxy_state *proxy_state_new(size_t bufsize)
 {
 	struct proxy_state *st = calloc(1, sizeof(struct proxy_state));
 	if (!st)
-		goto err;
+		err(1, "proxy_state_new: malloc");
 	st->obuf = buffer_new(bufsize);
 	st->tmpbuf = buffer_new(bufsize);
 	if (!st->obuf || !st->tmpbuf)
@@ -155,13 +155,13 @@ on_close(struct bc_parser *parser)
 		int hp, hpmax, sp, spmax, ep, epmax;
 		if (sscanf(st->tmpbuf->data, "%d %d %d %d %d %d", &hp, &hpmax,
 		    &sp, &spmax, &ep, &epmax) != 6) {
-			perror("full health status sscanf");
+			warnx("full health status sscanf");
 			break;
 		}
 		char *out = NULL;
 		if (asprintf(&out, MARKER "fhp %d/%d %d/%d %d/%d\n", hp, hpmax, sp,
 		    spmax, ep, epmax) == -1) {
-			perror("full health status asprintf");
+			warnx("full health status asprintf");
 			break;
 		}
 		buffer_append_str(st->obuf, out);
@@ -172,12 +172,12 @@ on_close(struct bc_parser *parser)
 	case 51: { /* partial hp/sp/ep status */
 		int hp, sp, ep;
 		if (sscanf(st->tmpbuf->data, "%d %d %d", &hp, &sp, &ep) != 6) {
-			perror("partial health status sscanf");
+			warnx("partial health status sscanf");
 			break;
 		}
 		char *out = NULL;
 		if (asprintf(&out, MARKER "hp %d %d %d\n", hp, sp, ep) == -1) {
-			perror("partial health status asprintf");
+			warnx("partial health status asprintf");
 			break;
 		}
 		buffer_append_str(st->obuf, out);
@@ -267,11 +267,11 @@ on_arg_end(struct bc_parser *parser)
 	 * earlier instead of at the end of the allocated buffer
 	 */
 	st->argstr = malloc(st->tmpbuf->len + 1);
-	if (st->argstr) {
-		memcpy(st->argstr, st->tmpbuf->data, st->tmpbuf->len);
-		st->argstr[st->tmpbuf->len] = '\0';
-	} else
-		perror("argstr: malloc");
+	if (!st->argstr)
+		err(1, "argstr: malloc");
+
+	memcpy(st->argstr, st->tmpbuf->data, st->tmpbuf->len);
+	st->argstr[st->tmpbuf->len] = '\0';
 
 	buffer_clear(st->tmpbuf);
 }
