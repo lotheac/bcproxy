@@ -159,9 +159,8 @@ on_close(struct bc_parser *parser)
 			break;
 		}
 		char *out = NULL;
-		asprintf(&out, "[fhp]%d/%d %d/%d %d/%d\n", hp, hpmax, sp, spmax,
-		    ep, epmax);
-		if (!out) {
+		if (asprintf(&out, MARKER "fhp %d/%d %d/%d %d/%d\n", hp, hpmax, sp,
+		    spmax, ep, epmax) == -1) {
 			perror("full health status asprintf");
 			break;
 		}
@@ -177,8 +176,7 @@ on_close(struct bc_parser *parser)
 			break;
 		}
 		char *out = NULL;
-		asprintf(&out, MARKER "hp %d %d %d\n", hp, sp, ep);
-		if (!out) {
+		if (asprintf(&out, MARKER "hp %d %d %d\n", hp, sp, ep) == -1) {
 			perror("partial health status asprintf");
 			break;
 		}
@@ -236,12 +234,11 @@ on_close(struct bc_parser *parser)
 		break;
 	default: {
 		char *str = NULL;
-		int len = asprintf(&str, MARKER "unknown tag %d %s\n",
-		    parser->tag->code, tmpstr);
-		if (str)
-			buffer_append(st->obuf, str, len);
+		if (asprintf(&str, MARKER "unknown tag %d %s\n",
+		    parser->tag->code, tmpstr) == -1)
+			warnx("unknown tag: asprintf");
 		else
-			perror("default asprintf");
+			buffer_append_str(st->obuf, str);
 		free(str);
 		break;
 	}
