@@ -33,4 +33,12 @@ else
     echo "no"
 fi
 
+printf "checking for getprogname: "
+if ${CC} -o config/out config/getprogname_test.c 2>/dev/null; then
+    echo "yes"
+else
+    echo '#define getprogname() ""' >&3
+    echo "no"
+fi
+
 echo '#endif' >&3
