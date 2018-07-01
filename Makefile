@@ -5,5 +5,5 @@ COPTS!=		pkg-config --cflags libpq
 COPTS+=		-Wall -Wextra -pedantic
 LINKS=		${BINDIR}/${PROG} ${BINDIR}/test_parser
 
-.include "config.mk"
+.include "conf.mk"
 .include <bsd.prog.mk>
