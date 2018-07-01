@@ -30,18 +30,18 @@ spec_spell: You watch with self-pride as your golden arrow hits Adult skunk.
  - prots: a line with duration is displayed for every prot status update sent
    by BatMUD. you should set up client triggers for this. example:
 ```
-🍺prots force_absorption 805
-🍺prots displacement 380
-🍺prots force_absorption 802
-🍺prots displacement 377
+∴prots force_absorption 805
+∴prots displacement 380
+∴prots force_absorption 802
+∴prots displacement 377
 ```
  - target status: when BatMUD sends updates about your current target's health
    percentage, a line is printed. examples:
 ```
-🍺target Small_shrew 100
+∴target Small_shrew 100
 <omitted text>
 Small shrew is DEAD, R.I.P.
-🍺target 0 0
+∴target 0 0
 ```
 
 Setup
