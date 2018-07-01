@@ -18,10 +18,6 @@
 #include "proxy.h"
 #include "room.h"
 
-#define BATHOST "batmud.bat.org"
-#define BATPORT "23"
-#define BC_ENABLE "\033bc 1\n"
-
 /*
  * Binds to loopback address using TCP and the provided servname, printing
  * diagnostics and errors on stderr. Returns a socket suitable for listening
@@ -175,14 +171,13 @@ retry_select:
 		}
 	}
 
-	status = 0;
 out:
 	(void) shutdown(server, SHUT_RDWR);
 	(void) shutdown(client, SHUT_RDWR);
 	return status;
 }
 
-void
+static void
 test_parser(size_t bufsz, struct bc_parser *parser, struct proxy_state *st)
 {
 	char *buf;
@@ -198,7 +193,7 @@ test_parser(size_t bufsz, struct bc_parser *parser, struct proxy_state *st)
 	free(buf);
 }
 
-void
+static void
 usage(void)
 {
 	errx(1, "usage: bcproxy [-w file] listening_port");
