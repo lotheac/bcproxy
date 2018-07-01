@@ -9,7 +9,7 @@ db_init(void)
 
 	db = PQconnectdb("dbname=batmud");
 	if (PQstatus(db) != CONNECTION_OK)
-		err(1, "db_init: %s", PQerrorMessage(db));
+		errx(1, "db_init: %s", PQerrorMessage(db));
 	return db;
 }
 
