@@ -11,8 +11,8 @@
 #include "proxy.h"
 #include "room.h"
 
-/* U+1F37A BEER MUG */
-#define MARKER "\xf0\x9f\x8d\xba"
+/* U+2234 THEREFORE */
+#define MARKER "\xe2\x88\xb4"
 
 struct
 proxy_state *proxy_state_new(size_t bufsize)

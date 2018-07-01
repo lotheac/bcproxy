@@ -3,9 +3,9 @@ It turns on "BatClient-mode" and filters the BatClient messages the server
 sends.
 
 Some extra lines are sent to the client by the proxy on reception of BatClient
-messages. Such lines are prefixed with the character 🍺 (U+1F37A BEER MUG,
-encoded as `\xf0\x9f\x8d\xba` in UTF-8) to make it possible to match them in
-your MUD client.
+messages. Such lines are prefixed with the marker character ∴ (U+2234
+THEREFORE), encoded as `\xe2\x88\xb4` in UTF-8) to make it possible to match
+them in your MUD client.
 
 Features
 ========
@@ -17,9 +17,9 @@ Features
  - convert utf-8 from client to iso-8859-1 when sending to server, and vice
    versa (utf-8 is always used; locales are not taken into account)
  - message classification: some server-sent messages have an additional type
-   visible at the start of the line. these are *not* prefixed with U+1F37A,
-   since the messages would be visible also to normal telnet clients (although
-   without type). examples:
+   visible at the start of the line. these are *not* prefixed with the marker
+   character, since the messages would be visible also to normal telnet clients
+   (although without type). examples:
 ```
 chan_tell: You tell Lotheac 'hello'
 spec_spell: You watch with self-pride as your golden arrow hits Adult skunk.
