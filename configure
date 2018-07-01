@@ -43,6 +43,7 @@ printf "checking for strlcpy: "
 if ${CC} -o config/out config/strlcpy_test.c 2>/dev/null; then
     echo "yes"
 else
+    echo "size_t strlcpy(char *, const char *, size_t);" >&3
     echo "SRCS+=    strlcpy.c" >&4
     echo "no"
 fi
