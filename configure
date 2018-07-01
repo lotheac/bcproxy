@@ -23,14 +23,12 @@ while [ -n "$1" ]; do
 done
 echo "SRCS+=    $color" >&4
 
-printf "checking for libtls: "
-if ${CC} -o config/out config/libtls_test.c -ltls 2>/dev/null; then
-    echo '#define HAVE_LIBTLS' >&3
-    echo 'LDADD+=   -ltls' >&4
+printf "checking for asprintf: "
+if ${CC} -o config/out config/asprintf_test.c 2>/dev/null; then
     echo "yes"
 else
-    echo "SRCS+=    faketls.c" >&4
-    echo "no"
+    echo "not found but required!"
+    exit 1
 fi
 
 printf "checking for getprogname: "
@@ -38,6 +36,24 @@ if ${CC} -o config/out config/getprogname_test.c 2>/dev/null; then
     echo "yes"
 else
     echo '#define getprogname() ""' >&3
+    echo "no"
+fi
+
+printf "checking for strlcpy: "
+if ${CC} -o config/out config/strlcpy_test.c 2>/dev/null; then
+    echo "yes"
+else
+    echo "SRCS+=    strlcpy.c" >&4
+    echo "no"
+fi
+
+printf "checking for libtls: "
+if ${CC} -o config/out config/libtls_test.c -ltls 2>/dev/null; then
+    echo '#define HAVE_LIBTLS' >&3
+    echo 'LDADD+=   -ltls' >&4
+    echo "yes"
+else
+    echo "SRCS+=    faketls.c" >&4
     echo "no"
 fi
 
