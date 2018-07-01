@@ -1,10 +1,11 @@
-#include <unistd.h>
-#include <string.h>
 #include <assert.h>
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
 #include <err.h>
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include "client_parser.h"
 
 enum client_state {
