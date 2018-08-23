@@ -5,14 +5,14 @@
 #include "db.h"
 
 struct proxy_state {
-	buffer *	obuf;
-	buffer *	tmpbuf;
-	char *		argstr;
-	struct room *	room;
-	PGconn *	db;
+	buffer		*obuf;
+	buffer		*tmpbuf;
+	char		*argstr;
+	struct room	*room;
+	struct db	*db;
 };
 
-struct proxy_state *	proxy_state_new(size_t);
+struct proxy_state *	proxy_state_new(size_t, struct db *);
 void			proxy_state_free(struct proxy_state *);
 
 void	on_open(struct bc_parser *);

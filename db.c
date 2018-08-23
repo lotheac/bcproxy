@@ -1,54 +1,33 @@
-#include <libpq-fe.h>
-#include <err.h>
+#include <stdlib.h>
 #include "db.h"
 
-PGconn *
-db_init(void)
+void
+db_init(struct db *db)
 {
-	PGconn *db = NULL;
+	if (db->dbp_init)
+		db->dbp = db->dbp_init();
+}
 
-	db = PQconnectdb("dbname=batmud");
-	if (PQstatus(db) != CONNECTION_OK)
-		errx(1, "db_init: %s", PQerrorMessage(db));
-	return db;
+void
+db_free(struct db *db)
+{
+	if (db->dbp_free)
+		db->dbp_free(db->dbp);
+	db->dbp = NULL;
 }
 
 int
-db_add_room(PGconn *db, struct room *room)
+db_add_room(struct db *db, struct room *room)
 {
-	int status = 0;
-	const char *paramValues[] = {
-		room->id, room->shortdesc, room->longdesc, room->area,
-		room->exits,
-		room->indoors ? "1" : "0",
-	};
-	PGresult *res = PQexecParams(db, "INSERT INTO room(id, shortdesc, "
-	    "longdesc, area, exits, indoors) SELECT $1, $2, $3, $4, $5, $6"
-	    "WHERE NOT EXISTS (SELECT 1 FROM room WHERE id=$1)",
-	    6, NULL, paramValues, NULL, NULL, 0);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		warnx("db_add_room: %s", PQerrorMessage(db));
-		status = -1;
-	}
-	PQclear(res);
-	return status;
+	if (db->add_room)
+		return db->add_room(db->dbp, room);
+	return 0;
 }
 
 int
-db_add_exit(PGconn *db, struct room *src, struct room *dest)
+db_add_exit(struct db *db, struct room *a, struct room *b)
 {
-	int status = 0;
-	const char *paramValues[] = {
-		dest->direction, src->id, dest->id
-	};
-	PGresult *res = PQexecParams(db, "INSERT INTO exit(direction, source,"
-	    "destination) SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM "
-	    "exit WHERE source=$2 AND destination=$3)", 3, NULL, paramValues,
-	    NULL, NULL, 0);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		warnx("db_add_exit: %s", PQerrorMessage(db));
-		status = -1;
-	}
-	PQclear(res);
-	return status;
+	if (db->add_exit)
+		return db->add_exit(db->dbp, a, b);
+	return 0;
 }

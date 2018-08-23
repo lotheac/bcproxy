@@ -15,7 +15,7 @@
 #define MARKER "\xe2\x88\xb4"
 
 struct
-proxy_state *proxy_state_new(size_t bufsize)
+proxy_state *proxy_state_new(size_t bufsize, struct db *db)
 {
 	struct proxy_state *st = calloc(1, sizeof(struct proxy_state));
 	if (!st)
@@ -24,9 +24,7 @@ proxy_state *proxy_state_new(size_t bufsize)
 	st->tmpbuf = buffer_new(bufsize);
 	if (!st->obuf || !st->tmpbuf)
 		goto err;
-	st->db = db_init();
-	if (!st->db)
-		goto err;
+	st->db = db;
 	return st;
 err:
 	proxy_state_free(st);
@@ -41,7 +39,6 @@ proxy_state_free(struct proxy_state *state)
 		buffer_free(state->tmpbuf);
 		free(state->argstr);
 		room_free(state->room);
-		PQfinish(state->db);
 		free(state);
 	}
 }

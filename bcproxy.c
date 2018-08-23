@@ -17,6 +17,8 @@
 #include "parser.h"
 #include "proxy.h"
 #include "room.h"
+#include "db.h"
+#include "postgres.h"
 
 /*
  * Binds to loopback address using TCP and the provided servname, printing
@@ -74,13 +76,13 @@ cleanup:
 #define BUFSZ 2048
 
 static int
-handle_connection(int client, int dumpfd, struct bc_parser *parser, struct
-    proxy_state *st)
+handle_connection(int client, int dumpfd, struct bc_parser *parser)
 {
 	char ibuf[BUFSZ], convbuf[BUFSZ];
 	int status = -1;
 	int server = -1;
 	struct tls *ctx;
+	struct proxy_state *st = parser->data;
 
 	fd_set rset;
 	ssize_t recvd, sent, bytes_to_send;
@@ -177,11 +179,12 @@ out:
 	return status;
 }
 
-static void
-test_parser(size_t bufsz, struct bc_parser *parser, struct proxy_state *st)
+static int
+test_parser(size_t bufsz, struct bc_parser *parser)
 {
 	char *buf;
 	ssize_t n;
+	struct proxy_state *st = parser->data;
 	buf = malloc(bufsz);
 	if (!buf)
 		err(1, "test_parser: malloc");
@@ -191,6 +194,7 @@ test_parser(size_t bufsz, struct bc_parser *parser, struct proxy_state *st)
 		buffer_clear(st->obuf);
 	}
 	free(buf);
+	return 0;
 }
 
 static void
@@ -202,6 +206,13 @@ usage(void)
 extern char *optarg;
 extern int optind;
 
+struct db postgres_db = {
+	.dbp_init = postgres_init,
+	.dbp_free = postgres_free,
+	.add_room = postgres_add_room,
+	.add_exit = postgres_add_exit,
+};
+
 int
 main(int argc, char **argv)
 {
@@ -209,13 +220,10 @@ main(int argc, char **argv)
 	int listenfd = -1;
 	int conn = -1;
 	int dumpfd = -1;
-
-	struct proxy_state *st = proxy_state_new(BUFSZ);
-	if (!st)
-		errx(1, "failed to initialize proxy_state");
+	struct db *db;
+	int testmode = 0;
 
 	struct bc_parser parser = {
-		.data = st,
 		.on_open = on_open,
 		.on_text = on_text,
 		.on_tag_text = on_tag_text,
@@ -229,13 +237,24 @@ main(int argc, char **argv)
 		err(1, "setlocale");
 
 	if (strcmp("test_parser", getprogname()) == 0) {
-		size_t bufsz;
-		if (argc != 2 || sscanf(argv[1], "%zu", &bufsz) != 1 ||
-		    bufsz == 0)
-			errx(1, "usage: test_parser buffer_size");
-		test_parser(bufsz, &parser, st);
-		return 0;
-	}
+		testmode = 1;
+		db = &(struct db) {
+			.dbp = NULL,
+			.dbp_init = NULL,
+			.dbp_free = NULL,
+			.add_room = NULL,
+			.add_exit = NULL,
+		};
+	} else
+		db = &postgres_db;
+
+	db_init(db);
+	parser.data = proxy_state_new(BUFSZ, db);
+	if (!parser.data)
+		errx(1, "failed to initialize proxy_state");
+
+	if (testmode)
+		return test_parser(BUFSZ, &parser);
 
 	int ch;
 	while ((ch = getopt(argc, argv, "w:")) != -1) {
@@ -273,8 +292,9 @@ retry_accept:
 		err(1, "accept");
 	}
 
-	exit_status = handle_connection(conn, dumpfd, &parser, st) == 0 ? 0 : 1;
-	proxy_state_free(st);
+	exit_status = handle_connection(conn, dumpfd, &parser) == 0 ? 0 : 1;
+	proxy_state_free((struct proxy_state *)parser.data);
+	db_free(db);
 exit:
 	if (conn != -1)
 		close(conn);
