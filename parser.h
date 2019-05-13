@@ -1,5 +1,5 @@
-#ifndef bc_parser_h
-#define bc_parser_h
+#ifndef PARSER_H
+#define PARSER_H
 
 struct tag;
 struct tag {
@@ -43,4 +43,4 @@ struct bc_parser {
 
 void	bc_parse(struct bc_parser *, const char *, size_t);
 
-#endif /* bc_parser_h */
+#endif /* PARSER_H */

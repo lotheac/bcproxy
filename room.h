@@ -1,5 +1,5 @@
-#ifndef room_h
-#define room_h
+#ifndef ROOM_H
+#define ROOM_H
 
 struct room {
 	char *	id;
@@ -14,4 +14,4 @@ struct room {
 struct room *	room_new(const char *);
 void		room_free(struct room *);
 
-#endif /* room_h */
+#endif /* ROOM_H */

@@ -1,5 +1,5 @@
-#ifndef proxy_h
-#define proxy_h
+#ifndef PROXY_H
+#define PROXY_H
 #include "parser.h"
 #include "buffer.h"
 #include "db.h"
@@ -24,4 +24,4 @@ void	on_text(struct bc_parser *, const char *, size_t);
 void	on_tag_text(struct bc_parser *, const char *, size_t);
 void	on_telnet_command(struct bc_parser *, const char *, size_t);
 
-#endif /* proxy_h */
+#endif /* PROXY_H */

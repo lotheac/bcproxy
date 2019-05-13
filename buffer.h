@@ -1,5 +1,5 @@
-#ifndef buffer_h
-#define buffer_h
+#ifndef BUFFER_H
+#define BUFFER_H
 
 typedef struct buffer buffer;
 
@@ -17,4 +17,4 @@ int		buffer_append_iso8859_1(buffer *, const char *, size_t);
 int		buffer_append_str(buffer *, const char *);
 void		buffer_clear(buffer *);
 
-#endif /* buffer_h */
+#endif /* BUFFER_H */
