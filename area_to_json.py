@@ -115,6 +115,11 @@ for src, tgt, direction in G.edges:
 colors = ['#b87a7a', '#7ab87a', '#b8b87a', '#7a7ab8', '#b87ab8', '#7ab8b8', '#262626']
 for n, sg in enumerate(AG):
     AG.node[sg]['color'] = colors[n]
+    # subgraph offset may not be known if there are no edges connecting the
+    # subgraph to others. default to 0.
+    if 'offx' not in AG.node[sg]:
+        AG.node[sg]['offx'] = 0
+        AG.node[sg]['offy'] = 0
     AG.node[sg]['offx'] += n / len(AG)
     AG.node[sg]['offy'] -= n / len(AG)
 # TODO: if node has exits which have no corresponding edges, visualize it
@@ -123,6 +128,14 @@ for node in G:
     G.node[node]['x'] = sg.node[node]['relx'] + AG.node[sg]['offx']
     G.node[node]['y'] = sg.node[node]['rely'] + AG.node[sg]['offy']
     G.node[node]['color'] = AG.node[sg]['color']
+    exits = set(G.node[node]['exits'].split(','))
+    known_edges = set(x[2] for x in G.out_edges(node, keys=True))
+    unknown_edges = exits - known_edges
+    if unknown_edges:
+        G.node[node]['borderColor'] = '#ff0000'
+        G.node[node]['type'] = 'diamond'
+        G.node[node]['unknown'] = list(unknown_edges)
+    # we no longer need the unserializable MultiDiGraph object here
     del G.node[node]['sg']
 
 top = {'nodes': list(G.node.values()), 'edges': edges}

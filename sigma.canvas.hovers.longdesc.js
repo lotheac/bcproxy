@@ -45,6 +45,15 @@
 
     var lines = node.longdesc.split("\n");
     lines = [ node.label, "", ...lines ];
+    /* remove last desc line, if empty */
+    var last = lines.pop()
+    if (last != "") {
+      lines.push(last);
+    }
+    if (node.unknown) {
+      lines.push("");
+      lines.push("Unknown exits: " + node.unknown.join(", "));
+    }
     var maxw = 0;
     lines.forEach(function(line) {
       var wid = context.measureText(line).width;
@@ -58,7 +67,7 @@
       w = Math.round(
         maxw + fontSize / 2 + size + 7
       );
-      h = Math.round(fontSize + 4) * (lines.length - 1);
+      h = Math.round(fontSize + 4) * (lines.length);
       e = Math.round(fontSize / 2 + 2);
 
       context.moveTo(x, y + e);

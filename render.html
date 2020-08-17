@@ -66,6 +66,8 @@
     <script src="sigma/plugins/sigma.renderers.edgeLabels/sigma.canvas.edges.labels.curve.js"></script>
     <script src="sigma/plugins/sigma.renderers.edgeLabels/sigma.canvas.edges.labels.curvedArrow.js"></script>
     <script src="sigma/plugins/sigma.renderers.edgeLabels/sigma.canvas.edges.labels.def.js"></script>
+    <script src="sigma/plugins/sigma.renderers.customShapes/shape-library.js"></script>
+    <script src="sigma/plugins/sigma.renderers.customShapes/sigma.renderers.customShapes.js"></script>
 
     <script src="sigma.canvas.hovers.longdesc.js"></script>
     <div id="container"></div>
@@ -77,7 +79,7 @@ var s = new sigma({
   },
   settings: {
     defaultNodeColor: '#ec5148',
-    sideMargin: 0.15,
+    sideMargin: 2,
     edgeLabelSize: 'proportional',
     edgeMinSize: 9,
     labelThreshold: 9,
@@ -88,7 +90,7 @@ var s = new sigma({
     minArrowSize: 8,
   },
 });
-sigma.parsers.json('data.json', s, function() { s.refresh(); });
+sigma.parsers.json('data.json', s, function() { CustomShapes.init(s); s.refresh(); });
     </script>
   </body>
 </html>
