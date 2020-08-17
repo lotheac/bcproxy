@@ -45,58 +45,48 @@ posmod = {
     'southeast':    (1, 1),
 }
 
-grid = {}
+# BatMUD areas often have multiple "levels".
+# Split the graph into subgraphs: for each node not yet visited, recursively
+# traverse to neighbors on cardinal directions, positioning each node onto a
+# grid.
+# AG is a graph of the subgraphs, ie. it describes how levels connect to each
+# other.
+AG = networkx.DiGraph()
 visited = set()
 
-# networkx traversal algorithms only return (src, tgt) tuples for edges, but in
-# a multidigraph that is not sufficient (we'd also need the key), so we
-# implement traversal here
-
-def place(node, x, y):
-    G.node[node]['x'] = x
-    G.node[node]['y'] = y
-    if (x,y) in grid:
-        print("COLLISION",file=sys.stderr)
-    grid[x, y] = node
-
-def visit(node):
-    nattrs = G.node[node]
-    # first place all the neighbors
-    for nbr, edgekeys in G[node].items():
-        if 'x' in G.node[nbr]:
-            # nbr already placed
+def traverse_cardinal(sg, node):
+    G.node[node]['sg'] = sg
+    for src, tgt, direction in G.out_edges(node, keys=True):
+        assert src == node
+        if not direction in posmod:
             continue
-        # Because this is a MultiDiGraph, we can have more than one edge from
-        # this node to the same neighbor. We find one edge keyed on a cardinal
-        # direction and use that for placement, if any.
-        for direction in edgekeys:
-            if direction in posmod:
-                dx, dy = posmod[direction]
-                newpos = (nattrs['x'] + dx, nattrs['y'] + dy)
-                place(nbr, *newpos)
-                break
-            else:
-                print("new subarea...", file=sys.stderr)
-                # XXX really not a good way to place. we can't really guess
-                # whether there's going to be enough space for an entire
-                # subgraph whereever we're placing it; maybe we should build
-                # another one recursively and then find some space where it
-                # fits?
-                place(nbr, nattrs['x'] + 4, nattrs['y'] + 6)
-
+        # TODO: if overlap would happen in subgraph, split to new subgraph
+        sg.add_edge(src, tgt, key=direction)
+        # if the neighbor is already placed, don't recurse into it
+        if 'relx' in sg.node[tgt]:
+            continue
+        dx, dy = posmod[direction]
+        sg.node[tgt]['relx'] = sg.node[src]['relx'] + dx
+        sg.node[tgt]['rely'] = sg.node[src]['rely'] + dy
+        # recurse from here so that we visit all nodes reachable on
+        # cardinal directions
+        traverse_cardinal(sg, tgt)
     visited.add(node)
-    # and then recurse into them if necessary
-    for nbr in G[node]:
-        if nbr not in visited:
-            visit(nbr)
 
-first = next(iter(G))
-place(first, 0, 0)
-visit(first)
+for node in G:
+    if node in visited:
+        continue
+    sg = networkx.MultiDiGraph()
+    AG.add_node(sg)
+    sg.add_node(node)
+    print("found subgraph {}".format(len(AG)), file=sys.stderr)
+    sg.node[node]['relx'] = 0
+    sg.node[node]['rely'] = 0
+    traverse_cardinal(sg, node)
 
-# format the edge data for sigma
+# all nodes are split into subgraphs.
+# now, deal with the edges.
 edges = []
-
 for src, tgt, direction in G.edges:
     edge = {
         # sigma.js wants unique edge ids
@@ -104,11 +94,36 @@ for src, tgt, direction in G.edges:
         'source': src,
         'target': tgt,
     }
-    if not direction in posmod:
+    srcsg = G.node[src]['sg']
+    tgtsg = G.node[tgt]['sg']
+    if srcsg != tgtsg:
+        # edge between subgraphs
+        AG.add_edge(srcsg, tgtsg)
         edge['label'] = direction
-        edge['type'] = 'curve'
-        edge['color'] = '#9e9'
+        edge['type'] = 'curvedArrow'
+        edge['color'] = '#99e'
+        srcx, srcy = srcsg.node[src]['relx'], srcsg.node[src]['rely']
+        tgtx, tgty = tgtsg.node[tgt]['relx'], tgtsg.node[tgt]['rely']
+        # offset for global position
+        # FIXME: this offset is relative to srcsg, not global position - the
+        # end result is therefore a bit off
+        AG.node[tgtsg]['offx'] = srcx - tgtx
+        AG.node[tgtsg]['offy'] = srcy - tgty
     edges.append(edge)
+
+# assign a color to each subgraph and place their nodes on a flat canvas.
+colors = ['#b87a7a', '#7ab87a', '#b8b87a', '#7a7ab8', '#b87ab8', '#7ab8b8', '#262626']
+for n, sg in enumerate(AG):
+    AG.node[sg]['color'] = colors[n]
+    AG.node[sg]['offx'] += n / len(AG)
+    AG.node[sg]['offy'] -= n / len(AG)
+# TODO: if node has exits which have no corresponding edges, visualize it
+for node in G:
+    sg = G.node[node]['sg']
+    G.node[node]['x'] = sg.node[node]['relx'] + AG.node[sg]['offx']
+    G.node[node]['y'] = sg.node[node]['rely'] + AG.node[sg]['offy']
+    G.node[node]['color'] = AG.node[sg]['color']
+    del G.node[node]['sg']
 
 top = {'nodes': list(G.node.values()), 'edges': edges}
 print(json.dumps(top, indent=2))
