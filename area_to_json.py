@@ -98,14 +98,19 @@ for src, tgt, direction in G.edges:
     }
     srcsg = G.node[src]['sg']
     tgtsg = G.node[tgt]['sg']
-    if srcsg != tgtsg:
+    srcx, srcy = srcsg.node[src]['relx'], srcsg.node[src]['rely']
+    tgtx, tgty = tgtsg.node[tgt]['relx'], tgtsg.node[tgt]['rely']
+    if srcsg == tgtsg:
+        if direction in posmod:
+            if posmod[direction] != (tgtx - srcx, tgty - srcy):
+                edge['label'] = direction
+                edge['type'] = 'curvedArrow'
+    else:
         # edge between subgraphs
         AG.add_edge(srcsg, tgtsg)
         edge['label'] = direction
         edge['type'] = 'curvedArrow'
         edge['color'] = '#99e'
-        srcx, srcy = srcsg.node[src]['relx'], srcsg.node[src]['rely']
-        tgtx, tgty = tgtsg.node[tgt]['relx'], tgtsg.node[tgt]['rely']
         # offset for global position
         # FIXME: this offset is relative to srcsg, not global position - the
         # end result is therefore a bit off
