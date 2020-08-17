@@ -43,13 +43,22 @@
       context.shadowColor = settings('labelHoverShadowColor');
     }
 
+    var lines = node.longdesc.split("\n");
+    lines = [ node.label, "", ...lines ];
+    var maxw = 0;
+    lines.forEach(function(line) {
+      var wid = context.measureText(line).width;
+      if (wid > maxw)
+        maxw = wid;
+    });
+
     if (node.longdesc && typeof node.longdesc === 'string') {
       x = Math.round(node[prefix + 'x'] - fontSize / 2 - 2);
       y = Math.round(node[prefix + 'y'] - fontSize / 2 - 2);
       w = Math.round(
-        context.measureText(node.longdesc).width + fontSize / 2 + size + 7
+        maxw + fontSize / 2 + size + 7
       );
-      h = Math.round(fontSize + 4);
+      h = Math.round(fontSize + 4) * (lines.length - 1);
       e = Math.round(fontSize / 2 + 2);
 
       context.moveTo(x, y + e);
@@ -90,16 +99,16 @@
     var nodeRenderer = sigma.canvas.nodes[node.type] || sigma.canvas.nodes.def;
     nodeRenderer(node, context, settings);
 
-    // Display the longdesc:
-    if (node.longdesc && typeof node.longdesc === 'string') {
-      context.fillStyle = (settings('labelHoverColor') === 'node') ?
-        (node.color || settings('defaultNodeColor')) :
-        settings('defaultLabelHoverColor');
+    // Display the contents:
+    context.fillStyle = (settings('labelHoverColor') === 'node') ?
+      (node.color || settings('defaultNodeColor')) :
+      settings('defaultLabelHoverColor');
 
+    for (var i = 0; i < lines.length; i++) {
       context.fillText(
-        node.longdesc,
-        Math.round(node[prefix + 'x'] + size + 3),
-        Math.round(node[prefix + 'y'] + fontSize / 3)
+       lines[i],
+       Math.round(node[prefix + 'x'] + size + 3),
+       Math.round(node[prefix + 'y'] + fontSize / 3) + i * (fontSize + 4)
       );
     }
   };

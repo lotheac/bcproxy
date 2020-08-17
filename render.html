@@ -60,25 +60,33 @@
     <script src="sigma/src/misc/sigma.misc.bindDOMEvents.js"></script>
     <script src="sigma/src/misc/sigma.misc.drawHovers.js"></script>
     <!-- END SIGMA IMPORTS -->
+
     <script src="sigma/plugins/sigma.parsers.json/sigma.parsers.json.js"></script>
     <script src="sigma/plugins/sigma.renderers.edgeLabels/settings.js"></script>
-    <script src="sigma/plugins/sigma.renderers.edgeLabels/sigma.canvas.edges.labels.def.js"></script>
     <script src="sigma/plugins/sigma.renderers.edgeLabels/sigma.canvas.edges.labels.curve.js"></script>
     <script src="sigma/plugins/sigma.renderers.edgeLabels/sigma.canvas.edges.labels.curvedArrow.js"></script>
+    <script src="sigma/plugins/sigma.renderers.edgeLabels/sigma.canvas.edges.labels.def.js"></script>
 
     <script src="sigma.canvas.hovers.longdesc.js"></script>
     <div id="container"></div>
     <script>
-var s = new sigma('container');
-s.settings({
-  defaultNodeColor: '#ec5148',
-  sideMargin: 0.15,
-  drawEdgeLabels: true,
-  edgeLabelSize: 'proportional',
-  labelThreshold: 9,
-  labelSize: 'fixed',
-  labelSizeRatio: 0.1,
-  defaultNodeType: 'longdesc',
+var s = new sigma({
+  renderer: {
+    container: document.getElementById('container'),
+    type: 'canvas',
+  },
+  settings: {
+    defaultNodeColor: '#ec5148',
+    sideMargin: 0.15,
+    edgeLabelSize: 'proportional',
+    edgeMinSize: 9,
+    labelThreshold: 9,
+    labelSize: 'fixed',
+    labelSizeRatio: 0.1,
+    defaultNodeType: 'longdesc',
+    font: 'monospace',
+    minArrowSize: 8,
+  },
 });
 sigma.parsers.json('data.json', s, function() { s.refresh(); });
     </script>
