@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+#!/usr/bin/env python3
 
 import networkx
 import psycopg2
@@ -22,11 +22,11 @@ cur = conn.cursor()
 cur.execute('select room.id, shortdesc, longdesc, indoors, exits from room '
             'where area=%s', (sys.argv[1],))
 # as nodes, we use the room identifiers, but add json-serializable data
-# formatted for sigma.js as each node's attr_dict
+# formatted for sigma.js as node attrs
 for row in cur:
     node = dict(zip(['id', 'label', 'longdesc', 'indoors', 'exits'], row))
     node['size'] = 1
-    G.add_node(node['id'], attr_dict=node)
+    G.add_node(node['id'], **node)
 
 cur.execute('select direction, source, destination from exit left join room '
             'on room.id=source where room.area=%s', (sys.argv[1],))
@@ -90,27 +90,25 @@ def visit(node):
         if nbr not in visited:
             visit(nbr)
 
-first = next(G.nodes_iter())
+first = next(iter(G))
 place(first, 0, 0)
 visit(first)
 
 # format the edge data for sigma
 edges = []
 
-for src, tgtdict in G.edge.items():
-    for tgt, dirdict in tgtdict.items():
-        for direction in dirdict.keys():
-            edge = {
-                # sigma.js wants unique edge ids
-                'id': '%s from %s' % (direction, src),
-                'source': src,
-                'target': tgt,
-            }
-            if not direction in posmod:
-                edge['label'] = direction
-                edge['type'] = 'curve'
-                edge['color'] = '#9e9'
-            edges.append(edge)
+for src, tgt, direction in G.edges:
+    edge = {
+        # sigma.js wants unique edge ids
+        'id': '%s from %s' % (direction, src),
+        'source': src,
+        'target': tgt,
+    }
+    if not direction in posmod:
+        edge['label'] = direction
+        edge['type'] = 'curve'
+        edge['color'] = '#9e9'
+    edges.append(edge)
 
 top = {'nodes': list(G.node.values()), 'edges': edges}
 print(json.dumps(top, indent=2))
