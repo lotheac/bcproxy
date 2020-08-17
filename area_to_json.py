@@ -5,6 +5,7 @@ import psycopg2
 import sys
 import json
 import random
+import itertools
 
 # TODO: cardinal-position map drawing works very well. Figure out how to split
 # into subgraphs that don't need explicit positioning, OR, draw as completely
@@ -87,10 +88,11 @@ for node in G:
 # all nodes are split into subgraphs.
 # now, deal with the edges.
 edges = []
+count = itertools.count()
 for src, tgt, direction in G.edges:
     edge = {
         # sigma.js wants unique edge ids
-        'id': '%s from %s' % (direction, src),
+        'id': next(count),
         'source': src,
         'target': tgt,
     }
@@ -112,9 +114,10 @@ for src, tgt, direction in G.edges:
     edges.append(edge)
 
 # assign a color to each subgraph and place their nodes on a flat canvas.
-colors = ['#b87a7a', '#7ab87a', '#b8b87a', '#7a7ab8', '#b87ab8', '#7ab8b8', '#262626']
+colors = ['#b87a7a', '#7ab87a', '#b8b87a', '#7a7ab8', '#b87ab8', '#7ab8b8',
+        '#262626', '#dbbdbd', '#bddbbd', '#dbdbbd', '#bdbddb', '#bddbdb']
 for n, sg in enumerate(AG):
-    AG.node[sg]['color'] = colors[n]
+    AG.node[sg]['color'] = colors[n % len(colors)]
     # subgraph offset may not be known if there are no edges connecting the
     # subgraph to others. default to 0.
     if 'offx' not in AG.node[sg]:
@@ -128,13 +131,15 @@ for node in G:
     G.node[node]['x'] = sg.node[node]['relx'] + AG.node[sg]['offx']
     G.node[node]['y'] = sg.node[node]['rely'] + AG.node[sg]['offy']
     G.node[node]['color'] = AG.node[sg]['color']
-    exits = set(G.node[node]['exits'].split(','))
-    known_edges = set(x[2] for x in G.out_edges(node, keys=True))
-    unknown_edges = exits - known_edges
-    if unknown_edges:
-        G.node[node]['borderColor'] = '#ff0000'
-        G.node[node]['type'] = 'diamond'
-        G.node[node]['unknown'] = list(unknown_edges)
+    obvious_exits = G.node[node]['exits']
+    if obvious_exits:
+        exits = set(obvious_exits.split(','))
+        known_edges = set(x[2] for x in G.out_edges(node, keys=True))
+        unknown_edges = exits - known_edges
+        if unknown_edges:
+            G.node[node]['borderColor'] = '#ff0000'
+            G.node[node]['type'] = 'diamond'
+            G.node[node]['unknown'] = list(unknown_edges)
     # we no longer need the unserializable MultiDiGraph object here
     del G.node[node]['sg']
 
