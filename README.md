@@ -43,6 +43,34 @@ spec_spell: You watch with self-pride as your golden arrow hits Adult skunk.
 Small shrew is DEAD, R.I.P.
 ∴target 0 0
 ```
+ - cast status: prints lines when the game tells the client to update a
+   skill/spell progress indicator. rounds left are sent by the game when
+   skill/spell starts or is in progress, and 0 signifies unknown number of
+   rounds. `cast_cancelled` means no skill or spell is in progress any more.
+   Examples, with game-provided heartbeats "Dunk dunk" shown, below:
+```
+You start chanting.
+Golden arrow: ####
+∴cast golden_arrow 4
+Dunk dunk
+∴cast golden_arrow 0
+Dunk dunk
+You skillfully cast the spell with haste.
+Golden arrow: #
+∴cast golden_arrow 1
+Dunk dunk
+You are done with the chant.
+spec_spell: Cast golden arrow at what?
+∴cast_cancelled
+
+You start concentrating on the skill.
+∴use ceremony 0
+∴use ceremony 0
+Dunk dunk
+You are prepared to do the skill.
+spec_skill: You perform the ceremony.
+∴cast_cancelled
+```
 
 Setup
 =====

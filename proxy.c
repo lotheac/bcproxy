@@ -144,8 +144,17 @@ on_close(struct bc_parser *parser)
 		buffer_append_buf(st->obuf, st->tmpbuf);
 		break;
 	case 40: /* clear skill/spell status */
+		buffer_append_str(st->obuf, MARKER "cast_cancelled\n");
+		break;
 	case 41: /* spell rounds left */
+		buffer_append_str(st->obuf, MARKER "cast ");
+		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_str(st->obuf, "\n");
+		break;
 	case 42: /* skill rounds left */
+		buffer_append_str(st->obuf, MARKER "use ");
+		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_str(st->obuf, "\n");
 		break;
 	case 50: { /* full hp/sp/ep status */
 #ifdef ENABLE_FULLHP
