@@ -156,40 +156,17 @@ on_close(struct bc_parser *parser)
 		buffer_append_buf(st->obuf, st->tmpbuf);
 		buffer_append_str(st->obuf, "\n");
 		break;
-	case 50: { /* full hp/sp/ep status */
-#ifdef ENABLE_FULLHP
-		int hp, hpmax, sp, spmax, ep, epmax;
-		if (sscanf(st->tmpbuf->data, "%d %d %d %d %d %d", &hp, &hpmax,
-		    &sp, &spmax, &ep, &epmax) != 6) {
-			warnx("full health status sscanf");
-			break;
-		}
-		char *out = NULL;
-		if (asprintf(&out, MARKER "fhp %d/%d %d/%d %d/%d\n", hp, hpmax, sp,
-		    spmax, ep, epmax) == -1) {
-			warnx("full health status asprintf");
-			break;
-		}
-		buffer_append_str(st->obuf, out);
-		free(out);
-#endif
+	case 50: /* full hp/sp/ep status */
+		buffer_append_str(st->obuf, MARKER "hpstatus ");
+		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_str(st->obuf, "\n");
 		break;
-	}
-	case 51: { /* partial hp/sp/ep status */
-		int hp, sp, ep;
-		if (sscanf(st->tmpbuf->data, "%d %d %d", &hp, &sp, &ep) != 6) {
-			warnx("partial health status sscanf");
-			break;
-		}
-		char *out = NULL;
-		if (asprintf(&out, MARKER "hp %d %d %d\n", hp, sp, ep) == -1) {
-			warnx("partial health status asprintf");
-			break;
-		}
-		buffer_append_str(st->obuf, out);
-		free(out);
+	case 51: /* partial hp/sp/ep status */
+		/* XXX I've never seen bat actually send this */
+		buffer_append_str(st->obuf, MARKER "partialhpstatus ");
+		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_str(st->obuf, "\n");
 		break;
-	}
 	case 52: /* player name, race, level etc. and exp */
 	case 53: /* exp */
 	case 54: /* player status */
