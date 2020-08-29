@@ -56,15 +56,32 @@ rgb_to_xterm(uint8_t r, uint8_t g, uint8_t b)
 	return 16 + 36 * rx + 6 * gx + bx;
 }
 
+/*
+ * https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+ * https://invisible-island.net/xterm/xterm.faq.html#color_by_number
+ *
+ * XXX there are interesting historical reasons for the differences in how
+ * indexed and direct color sequences are handled in terminal emulators, see
+ * the above links.
+ * given the above, using colons in the control sequence as parameter substring
+ * separators would be preferred, since according to Dickey, ISO-8613-6
+ * specifies colons for that purpose. but since tinyfugue only understands
+ * semicolons in this context, and since this entire compilation unit exists to
+ * enable compatibility with tinyfugue, we use semicolons here.
+ *
+ * the indexed (256) color control sequence we generate contains, at maximum:
+ *     2 fixed bytes: ESC [
+ *     2 bytes for foreground/background selection ("38" or "48")
+ *     3 fixed bytes: ; 5 ;
+ *     3 bytes for the color index
+ *     2 fixed bytes: m NUL
+ */
+static char colorbuf[2+2+3+3+2];
+
 char *
-colorstr_alloc(bool foreground, uint8_t r, uint8_t g, uint8_t b)
+colorstr(bool foreground, uint8_t r, uint8_t g, uint8_t b)
 {
-	char *out = NULL;
-	if (asprintf(&out, "\x1b[%u;5;%hhum",
-	    foreground ? 38 : 48,
-	    rgb_to_xterm(r, g, b)) < 0) {
-		warnx("color alloc");
-		return NULL;
-	}
-	return out;
+	snprintf(colorbuf, sizeof(colorbuf), "\x1b[%s;5;%hhum",
+	    foreground ? "38" : "48", rgb_to_xterm(r, g, b));
+	return colorbuf;
 }

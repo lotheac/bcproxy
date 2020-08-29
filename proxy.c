@@ -126,12 +126,11 @@ on_close(struct bc_parser *parser)
 				warnx("color sscanf '%s'", st->argstr);
 				break;
 			}
-			char *color = colorstr_alloc(is_fg,
+			char *color = colorstr(is_fg,
 			    (rgb >> 16) & 0xff,
 			    (rgb >> 8) & 0xff,
 			    rgb & 0xff);
 			buffer_append_str(st->obuf, color);
-			free(color);
 			buffer_append_str(st->obuf, tmpstr);
 			buffer_append_str(st->obuf, "\x1b[0m");
 		}
