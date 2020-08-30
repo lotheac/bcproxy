@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Areas
+{% endblock %}
+
+{% block header %}
+  Areas
+{% endblock %}
+
+{% block content %}
+  <ul>
+    {% for area in areas %}
+      <li><a href="/map/{{ area.area }}">{{ area.area }}</a></li>
+    {% endfor %}
+  </ul>
+{% endblock %}

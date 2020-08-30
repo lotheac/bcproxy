@@ -9,11 +9,11 @@ Setup
 
 - install python modules
   ```
-  pip3 install -U Flask SqlAlchemy psycopg2 Flask-SqlAlchemy dataclasses
+  pip3 install -U Flask SqlAlchemy psycopg2 Flask-SqlAlchemy dataclasses dataclasses_json networkx
   ```
 - run the web server
   ```
-  env FLASK_APP=index.py flask run
+  flask run
   ```
-- open your browser at http://127.0.0.1:5000/areas (provided that there
+- open your browser at http://127.0.0.1:5000/ (provided that there
   is room data in your databse)
