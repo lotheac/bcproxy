@@ -21,6 +21,7 @@
 #include <limits.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <openssl/bio.h>
@@ -444,8 +445,16 @@ tls_configure_ssl(struct tls *ctx, SSL_CTX *ssl_ctx)
 	}
 
 	if (ctx->config->verify_time == 0) {
-		X509_VERIFY_PARAM_set_flags(ssl_ctx->param,
-		    X509_V_FLAG_NO_CHECK_TIME);
+		X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_new();
+
+		if (param == NULL) {
+			goto err;
+		}
+
+		X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_NO_CHECK_TIME);
+		SSL_CTX_set1_param(ssl_ctx, param);
+
+		X509_VERIFY_PARAM_free(param);
 	}
 
 	/* Disable any form of session caching by default */
@@ -493,6 +502,7 @@ tls_configure_ssl_verify(struct tls *ctx, SSL_CTX *ssl_ctx, int verify)
 	STACK_OF(X509_INFO) *xis = NULL;
 	X509_STORE *store;
 	X509_INFO *xi;
+	X509_VERIFY_PARAM *param;
 	BIO *bio = NULL;
 	int rv = -1;
 	int i;
@@ -554,8 +564,19 @@ tls_configure_ssl_verify(struct tls *ctx, SSL_CTX *ssl_ctx, int verify)
 			}
 			xi->crl = NULL;
 		}
-		X509_VERIFY_PARAM_set_flags(store->param,
+
+		param = X509_VERIFY_PARAM_new();
+
+		if (param == NULL) {
+			goto err;
+		}
+		
+		X509_VERIFY_PARAM_set_flags(param,
 		    X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+
+		X509_STORE_set1_param(store, param);
+
+		X509_VERIFY_PARAM_free(param);
 	}
 
  done:

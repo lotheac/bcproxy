@@ -42,4 +42,12 @@ if !HAVE_STRSEP
 libcompat_la_SOURCES += strsep.c
 endif
 
+if !HAVE_FREEZERO
+libcompat_la_SOURCES += freezero.c
+endif
+
+if !HAVE_TIMINGSAFE_MEMCMP
+libcompat_la_SOURCES += timingsafe_memcmp.c
+endif
+
 include Makefile.am.arc4random

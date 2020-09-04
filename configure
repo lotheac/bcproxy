@@ -50,11 +50,10 @@ fi
 
 printf "checking for libtls: "
 if ${CC} -o config/out config/libtls_test.c -ltls 2>/dev/null; then
-    echo '#define HAVE_LIBTLS' >&3
     echo 'LDADD+=   -ltls' >&4
+    echo 'HAVE_LIBTLS=1' >&4
     echo "yes"
 else
-    echo "SRCS+=    faketls.c" >&4
     echo "no"
 fi
 

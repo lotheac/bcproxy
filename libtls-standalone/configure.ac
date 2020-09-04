@@ -37,13 +37,19 @@ CHECK_C_HARDENING_OPTIONS
 DISABLE_COMPILER_WARNINGS
 
 CHECK_LIBC_COMPAT
-CHECK_LIBC_CRYPTO_COMPAT
+CHECK_CRYPTO_COMPAT
+
+AC_DEFINE([__BEGIN_HIDDEN_DECLS], [])
+AC_DEFINE([__END_HIDDEN_DECLS], [])
+
+AC_CHECK_FILE([/etc/ssl/certs/ca-certificates.crt],
+	      AC_DEFINE([TLS_DEFAULT_CA_FILE], ["/etc/ssl/certs/ca-certificates.crt"])
+	      )
 
 AC_CONFIG_FILES([
 	Makefile
 	include/Makefile
 	compat/Makefile
-	man/Makefile
 	src/Makefile
 	tests/Makefile
 	libtls.pc

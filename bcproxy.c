@@ -13,12 +13,13 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "client_parser.h"
+#include "config.h"
+#include "db.h"
 #include "net.h"
 #include "parser.h"
+#include "postgres.h"
 #include "proxy.h"
 #include "room.h"
-#include "db.h"
-#include "postgres.h"
 
 /*
  * Binds to loopback address using TCP and the provided servname, printing

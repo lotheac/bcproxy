@@ -128,8 +128,8 @@ tls_ocsp_get_certid(X509 *main_cert, STACK_OF(X509) *extra_certs,
 {
 	X509_NAME *issuer_name;
 	X509 *issuer;
-	X509_STORE_CTX storectx;
-	X509_OBJECT tmpobj;
+	X509_STORE_CTX *storectx;
+	X509_OBJECT *tmpobj;
 	OCSP_CERTID *cid = NULL;
 	X509_STORE *store;
 
@@ -144,14 +144,20 @@ tls_ocsp_get_certid(X509 *main_cert, STACK_OF(X509) *extra_certs,
 
 	if ((store = SSL_CTX_get_cert_store(ssl_ctx)) == NULL)
 		return NULL;
-	if (X509_STORE_CTX_init(&storectx, store, main_cert, extra_certs) != 1)
+	if ((storectx = X509_STORE_CTX_new()) == NULL)
 		return NULL;
-	if (X509_STORE_get_by_subject(&storectx, X509_LU_X509, issuer_name,
-		&tmpobj) == 1) {
-		cid = OCSP_cert_to_id(NULL, main_cert, tmpobj.data.x509);
-		X509_OBJECT_free_contents(&tmpobj);
+	if (X509_STORE_CTX_init(storectx, store, main_cert, extra_certs) != 1)
+		goto err;
+	if ((tmpobj = X509_OBJECT_new()) == NULL)
+		goto err;
+	if (X509_STORE_get_by_subject(storectx, X509_LU_X509, issuer_name,
+		tmpobj) == 1) {
+		cid = OCSP_cert_to_id(NULL, main_cert, X509_OBJECT_get0_X509(tmpobj));
+		X509_OBJECT_free(tmpobj);
 	}
-	X509_STORE_CTX_cleanup(&storectx);
+
+ err:
+	X509_STORE_CTX_cleanup(storectx);
 	return cid;
 }
 

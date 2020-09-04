@@ -9,4 +9,12 @@ LINKS=		${BINDIR}/${PROG} ${BINDIR}/test_parser
 COPTS+=		-D_GNU_SOURCE
 
 .include "conf.mk"
+.ifndef HAVE_LIBTLS
+LIBTLS:=	${.CURDIR}/libtls-standalone/src/.libs/libtls.a
+COPTS+=		-I${.CURDIR}/libtls-standalone/include
+LDADD+=		${LIBTLS} -lssl -lcrypto -lpthread
+${PROG}: ${LIBTLS}
+${LIBTLS}:
+	cd ${.CURDIR}/libtls-standalone && autoreconf -i && ./configure && ${.MAKE}
+.endif
 .include <bsd.prog.mk>

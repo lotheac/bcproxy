@@ -83,10 +83,8 @@ connect_batmud(int *fd)
 	struct tls *ctx = NULL;
 	const char *bc_magic = "\033bc 1\n";
 	const char *hostname = "batmud.bat.org";
-	char *servname = "23";
-#ifdef HAVE_LIBTLS
-	servname = "2022";
-#endif
+	char *servname = "2022";
+
 	ctx = tls_client();
 	int ret;
 	struct addrinfo *result, *rp;
