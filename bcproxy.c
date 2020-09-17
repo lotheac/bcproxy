@@ -4,11 +4,11 @@
 #include <fcntl.h>
 #include <locale.h>
 #include <netdb.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -85,12 +85,10 @@ handle_connection(int client, int dumpfd, struct bc_parser *parser)
 	struct tls *ctx;
 	struct proxy_state *st = parser->data;
 
-	fd_set rset;
 	ssize_t recvd, sent, bytes_to_send;
 	if ((ctx = connect_batmud(&server)) == NULL)
 		errx(1, "failed to connect");
 	warnx("connected to batmud");
-	const int nfds = (server > client ? server : client) + 1;
 
 	/*
 	 * Set the fd's nonblocking by default and use blocking mode only when
@@ -106,41 +104,49 @@ handle_connection(int client, int dumpfd, struct bc_parser *parser)
 	}
 
 	for(;;) {
+		struct pollfd pfd[2];
 		int nready;
-		FD_ZERO(&rset);
-		FD_SET(client, &rset);
-		FD_SET(server, &rset);
-retry_select:
-		nready = select(nfds, &rset, NULL, NULL, NULL);
-		if (nready < 0) {
-			if (errno == EINTR)
-				goto retry_select;
-			warn("handle_connection: select");
-			goto out;
-		}
 		int from, to;
-		if (FD_ISSET(server, &rset)) {
+
+		pfd[0].fd = server;
+		pfd[0].events = POLLIN;
+		pfd[1].fd = client;
+		pfd[1].events = POLLIN;
+
+		nready = poll(pfd, 2, -1);
+		if (nready == -1)
+			err(1, "poll");
+		if (pfd[0].revents & (POLLERR|POLLNVAL))
+			errx(1, "[%d] bad server fd %d", getpid(), pfd[0].fd);
+		if (pfd[1].revents & (POLLERR|POLLNVAL))
+			errx(1, "[%d] bad client fd %d", getpid(), pfd[1].fd);
+		if (pfd[0].revents & POLLIN) {
 			from = server;
 			to = client;
 			recvd = tls_read(ctx, ibuf, BUFSZ);
 			if (recvd == TLS_WANT_POLLIN ||
 			    recvd == TLS_WANT_POLLOUT)
 				continue;
-			if (recvd < 0)
+			if (recvd == -1)
 				warnx("tls_read: %s", tls_error(ctx));
-		} else {
+		} else if (pfd[1].revents & POLLIN) {
 			from = client;
 			to = server;
 			recvd = recv(from, ibuf, BUFSZ, 0);
-			if (recvd < 0)
+			if (recvd == -1)
 				warn("recv");
 		}
 
-		if (recvd < 0)
+		if (recvd == -1)
 			goto out;
-		else if (recvd == 0) {
-			warnx("%s disconnect",
-			    from == client ? "client" : "server");
+
+		if (pfd[0].revents & POLLHUP || recvd == 0) {
+			warnx("server disconnect");
+			status = 0;
+			goto out;
+		}
+		if (pfd[1].revents & POLLHUP || recvd == 0) {
+			warnx("client disconnect");
 			status = 0;
 			goto out;
 		}
@@ -175,8 +181,10 @@ retry_select:
 	}
 
 out:
-	(void) shutdown(server, SHUT_RDWR);
-	(void) shutdown(client, SHUT_RDWR);
+	shutdown(server, SHUT_RDWR);
+	shutdown(client, SHUT_RDWR);
+	close(server);
+	close(client);
 	return status;
 }
 
