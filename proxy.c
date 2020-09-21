@@ -189,7 +189,7 @@ on_close(struct bc_parser *parser)
 			struct room *new = NULL;
 			if (strcmp(tmpstr, "BAT_MAPPER;;REALM_MAP") == 0) {
 				asprintf(&msg, "Exited to map from %s.\n",
-				    st->room ?  st->room->area : "(unknown)");
+				    st->room ? st->room->area : "(unknown)");
 			} else {
 				new = room_new(tmpstr);
 				if (!new) {
@@ -200,11 +200,15 @@ on_close(struct bc_parser *parser)
 				db_add_room(st->db, new);
 				if (!st->room || strcmp(st->room->area, new->area) != 0)
 					asprintf(&msg, "Entered area %s with "
-					    "direction %s, %sdoors\n",
-					    new->area, new->direction,
-					    new->indoors ? "in" : "out");
+					    "direction %s\n",
+					    new->area, new->direction);
 				else
 					db_add_exit(st->db, st->room, new);
+				buffer_append_str(st->obuf, MARKER "room ");
+				buffer_append_str(st->obuf, new->id);
+				buffer_append_str(st->obuf, " ");
+				buffer_append_str(st->obuf, new->area);
+				buffer_append_str(st->obuf, "\n");
 			}
 			room_free(st->room);
 			st->room = new;

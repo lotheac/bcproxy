@@ -26,7 +26,11 @@ spec_spell: You watch with self-pride as your golden arrow hits Adult skunk.
 ```
  - mapping: room descriptions & exits (edges between rooms) are stored in a
    database as you play (requires `set client_mapper_toggle on` configured in
-   game). no support yet for map visualization.
+   game). when the room you are in changes, the room id and ingame area name
+   are displayed:
+```
+∴room $apr1$dF!!_X#W$i8ByJsY5G/kpbE1RGJzqX1 mage guild
+```
  - prots: a line with duration is displayed for every prot status update sent
    by BatMUD. you should set up client triggers for this. example:
 ```
