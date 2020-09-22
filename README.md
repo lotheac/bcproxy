@@ -31,7 +31,7 @@ spec_spell: You watch with self-pride as your golden arrow hits Adult skunk.
 ```
 ∴room $apr1$dF!!_X#W$i8ByJsY5G/kpbE1RGJzqX1 mage guild
 ```
-   current room state may become invalid due to teleportation between rooms,
+ - current room state may become invalid due to teleportation between rooms,
    eg. summon or relocate. if that happens, the next room state transition is
    ignored (ie. not added to database) and the number of `spec_map` messages
    received since the last valid `BAT_MAPPER` room transition is shown:
