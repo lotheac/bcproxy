@@ -106,8 +106,6 @@ on_close(struct bc_parser *parser)
 				defer = 1;
 				break;
 			} else if (strcmp(st->argstr, "spec_map") == 0) {
-				if (st->room)
-					st->room->spec_map_count++;
 				if (strcmp(tmpstr, "NoMapSupport") == 0)
 					break;
 			} else if (strcmp(st->argstr, "spec_news") != 0) {
@@ -189,31 +187,6 @@ on_close(struct bc_parser *parser)
 		if (strncmp(tmpstr, "BAT_MAPPER;;", strlen("BAT_MAPPER;;")) == 0) {
 			char *msg = NULL;
 			struct room *new = NULL;
-
-			/*
-			 * Bat sends no BAT_MAPPER information about
-			 * teleporting between rooms. So if we teleport (eg.
-			 * relocate or summon) inside an area from room A to
-			 * room B, and then move normally from B to C, our
-			 * stale state would erroneously cause an edge between
-			 * A and C to be added.
-			 *
-			 * To work around this, we count spec_map messages
-			 * received between room transitions. There should be
-			 * exactly one -- if there are more, then we have
-			 * entered additional room(s) in some fashion that
-			 * gives no mapper message before performing the
-			 * current move, and must consider our stored room
-			 * state stale.
-			 */
-			if (st->room && st->room->spec_map_count != 1) {
-				asprintf(&msg, MARKER "stale_room_state %u\n",
-				    st->room->spec_map_count);
-				buffer_append_str(st->obuf, msg);
-				free(msg);
-				room_free(st->room);
-				st->room = NULL;
-			}
 			if (strcmp(tmpstr, "BAT_MAPPER;;REALM_MAP") == 0) {
 				asprintf(&msg, "Exited to map from %s.\n",
 				    st->room ? st->room->area : "(unknown)");
