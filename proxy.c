@@ -185,16 +185,28 @@ on_close(struct bc_parser *parser)
 		break;
 	case 99: /* mapper; requires 'set client_mapper_toggle on' ingame */
 		if (strncmp(tmpstr, "BAT_MAPPER;;", strlen("BAT_MAPPER;;")) == 0) {
+			char *mappermsg = tmpstr + strlen("BAT_MAPPER;;");
 			char *msg = NULL;
 			struct room *new = NULL;
-			if (strcmp(tmpstr, "BAT_MAPPER;;REALM_MAP") == 0) {
+			if (strcmp(mappermsg, "REALM_MAP") == 0) {
 				asprintf(&msg, "Exited to map from %s.\n",
 				    st->room ? st->room->area : "(unknown)");
+			} else if (strncmp(mappermsg, "ROOM_UNKNOWN;;",
+			    strlen("ROOM_UNKNOWN;;")) == 0) {
+				char *cause = mappermsg + strlen("ROOM_UNKNOWN;;");
+				cause[strcspn(cause, ";")] = '\0';
+				if (st->room) {
+					room_free(st->room);
+					st->room = NULL;
+				}
+				buffer_append_str(st->obuf, MARKER "room_unknown ");
+				buffer_append_str(st->obuf, cause);
+				buffer_append_str(st->obuf, "\n");
 			} else {
-				new = room_new(tmpstr);
+				new = room_new(mappermsg);
 				if (!new) {
 					warnx("failed to allocate new room: \n"
-					   "%s", tmpstr);
+					   "%s", mappermsg);
 					break;
 				}
 				db_add_room(st->db, new);

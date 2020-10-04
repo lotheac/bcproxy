@@ -37,7 +37,6 @@ room_new(const char *mapmsg)
 	cur = end + strlen(SEP);\
 } while(0)
 
-	SKIP(); /* BAT_MAPPER */
 	NEXT(room->area);
 	NEXT(room->id);
 	NEXT(room->direction);
