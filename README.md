@@ -10,8 +10,11 @@ them in your MUD client.
 Features
 ========
 
- - more colors: 24-bit colors sent by BatMUD are approximated to closest-match
-   xterm-256color escapes
+ - more colors: 24-bit BatClient-mode colors sent by BatMUD are translated into
+   24-bit color terminal escape sequences
+   - if your mud client does not understand 24-bit color, pass
+     `--enable-tf-compat` to `./configure` and 24-bit colors will be
+     approximated to closest-match xterm-256color escape sequences instead
  - connection to BatMUD is encrypted with libtls
  - convert utf-8 from client to iso-8859-1 when sending to server, and vice
    versa (utf-8 is always used; locales are not taken into account)
