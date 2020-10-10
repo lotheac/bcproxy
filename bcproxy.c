@@ -122,9 +122,9 @@ handle_connection(int client, int dumpfd, struct bc_parser *parser)
 		if (nready == -1)
 			err(1, "poll");
 		if (pfd[0].revents & (POLLERR|POLLNVAL))
-			errx(1, "[%d] bad server fd %d", getpid(), pfd[0].fd);
+			errx(1, "bad server fd %d", pfd[0].fd);
 		if (pfd[1].revents & (POLLERR|POLLNVAL))
-			errx(1, "[%d] bad client fd %d", getpid(), pfd[1].fd);
+			errx(1, "bad client fd %d", pfd[1].fd);
 		if (pfd[0].revents & POLLIN) {
 			from = server;
 			to = client;
