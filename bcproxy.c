@@ -1,3 +1,9 @@
+#include <sys/socket.h>
+#include <sys/time.h>
+
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+
 #include <assert.h>
 #include <err.h>
 #include <errno.h>
@@ -9,9 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/time.h>
 #include <unistd.h>
+
 #include "client_parser.h"
 #include "config.h"
 #include "db.h"
@@ -98,14 +103,22 @@ handle_connection(int client, int dumpfd, struct bc_parser *parser)
 	/*
 	 * Set the fd's nonblocking by default and use blocking mode only when
 	 * writing.
+	 * Also set TCP_NODELAY in both directions; MUD traffic should be sent
+	 * as soon as possible, and in the pathological case, if the receiver
+	 * is using delayed ACKs, enabling Nagle's algorithm can cause large
+	 * delays (eg. OpenBSD delayed ACK uses 200ms).
 	 */
 	int fds[] = { client, server, -1 };
 	for (int *fd = fds; *fd != -1; fd++) {
+		int one = 1;
 		int flags = fcntl(*fd, F_GETFL, 0);
-		if (flags < 0)
+		if (flags == -1)
 			err(1, "fcntl F_GETFL");
 		if (fcntl(*fd, F_SETFL, flags | O_NONBLOCK) < 0)
 			err(1, "fcntl F_SETFL");
+		if (setsockopt(*fd, IPPROTO_TCP, TCP_NODELAY, &one,
+		    sizeof(one)) == -1)
+			err(1, "setsockopt TCP_NODELAY");
 	}
 
 	for(;;) {
