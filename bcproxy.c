@@ -74,18 +74,23 @@ cleanup:
 		freeaddrinfo(result);
 	return sock;
 }
-#define BUFSZ 2048
+#define BUFSZ (64*1024)
 
 static int
 handle_connection(int client, int dumpfd, struct bc_parser *parser)
 {
-	char ibuf[BUFSZ], convbuf[BUFSZ];
+	char *ibuf, *convbuf;
 	int status = -1;
 	int server = -1;
 	struct tls *ctx;
 	struct proxy_state *st = parser->data;
-
 	ssize_t recvd, sent, bytes_to_send;
+
+	ibuf = malloc(BUFSZ);
+	convbuf = malloc(BUFSZ);
+	if (!ibuf || !convbuf)
+		errx(1, "failed to allocate buffers");
+
 	if ((ctx = connect_batmud(&server)) == NULL)
 		errx(1, "failed to connect");
 	warnx("connected to batmud");
@@ -185,6 +190,8 @@ out:
 	shutdown(client, SHUT_RDWR);
 	close(server);
 	close(client);
+	free(ibuf);
+	free(convbuf);
 	return status;
 }
 
