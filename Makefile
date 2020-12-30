@@ -35,8 +35,14 @@ ${LIBRESSL}.tar.gz:
 	echo ${LIBRESSL_SHA256} libressl.tar.gz | sha256sum -c
 	mv libressl.tar.gz $@
 
+# --with-openssldir is a dirty hack to find a cert bundle at runtime. libressl
+# assumes "cert.pem" under openssldir, but eg. Debian's cert bundles instead
+# live in /etc/ssl/certs/ca-certificates.crt, so while this hack means that
+# relocating the source directory requires rebuilding libressl, this is still
+# easier than finding the system cert bundle and patching libtls with its
+# location.
 ${LIBCRYPTO}: ${.CURDIR}/${LIBRESSL}/configure
-	cd ${.CURDIR}/${LIBRESSL} && ./configure && ${.MAKE}
+	cd ${.CURDIR}/${LIBRESSL} && ./configure --with-openssldir=${.CURDIR}/${LIBRESSL}/apps/openssl && ${.MAKE}
 ${LIBSSL}: ${LIBCRYPTO}
 ${LIBTLS}: ${LIBCRYPTO}
 .endif # !HAVE_LIBTLS
