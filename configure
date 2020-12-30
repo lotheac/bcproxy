@@ -54,7 +54,7 @@ if ${CC} -o config/out config/libtls_test.c -ltls 2>/dev/null; then
     echo 'HAVE_LIBTLS=1' >&4
     echo "yes"
 else
-    echo "no"
+    echo "no - building statically linked copy"
 fi
 
 echo '#endif' >&3

@@ -10,11 +10,35 @@ COPTS+=		-D_GNU_SOURCE
 
 .include "conf.mk"
 .ifndef HAVE_LIBTLS
-LIBTLS:=	${.CURDIR}/libtls-standalone/src/.libs/libtls.a
-COPTS+=		-I${.CURDIR}/libtls-standalone/include
-LDADD+=		${LIBTLS} -lssl -lcrypto -lpthread
-${PROG}: ${LIBTLS}
-${LIBTLS}:
-	cd ${.CURDIR}/libtls-standalone && autoreconf -i && ./configure && ${.MAKE}
-.endif
+
+LIBRESSL:=		libressl-3.3.1
+LIBRESSL_SHA256:=	a6d331865e0164a13ac85a228e52517f7cf8f8488f2f95f34e7857302f97cfdb
+LIBRESSL_URL:=		https://cdn.openbsd.org/pub/OpenBSD/LibreSSL/${LIBRESSL}.tar.gz
+
+LIBSSL:=	${.CURDIR}/${LIBRESSL}/ssl/.libs/libssl.a
+LIBCRYPTO:=	${.CURDIR}/${LIBRESSL}/crypto/.libs/libcrypto.a
+LIBTLS:=	${.CURDIR}/${LIBRESSL}/tls/.libs/libtls.a
+COPTS+=		-I${.CURDIR}/${LIBRESSL}/include
+LDADD+=		${LIBSSL} ${LIBCRYPTO} ${LIBTLS} -lpthread
+
+${SRCS}: ${LIBTLS}
+${PROG}: ${LIBSSL} ${LIBCRYPTO} ${LIBTLS}
+
+# this is mostly linux-specific -- my non-linux machines already have
+# libressl/libtls, so I can't be bothered to make this portable
+${.CURDIR}/${LIBRESSL}/configure: ${.CURDIR}/${LIBRESSL}
+${.CURDIR}/${LIBRESSL}: ${LIBRESSL}.tar.gz
+	tar -xC ${.CURDIR} -zf ${LIBRESSL}.tar.gz
+${LIBRESSL}.tar.gz:
+	@echo "downloading ${LIBRESSL_URL}..."
+	wget -nv -O libressl.tar.gz ${LIBRESSL_URL} || curl -o libressl.tar.gz ${LIBRESSL_URL}
+	echo ${LIBRESSL_SHA256} libressl.tar.gz | sha256sum -c
+	mv libressl.tar.gz $@
+
+${LIBCRYPTO}: ${.CURDIR}/${LIBRESSL}/configure
+	cd ${.CURDIR}/${LIBRESSL} && ./configure && ${.MAKE}
+${LIBSSL}: ${LIBCRYPTO}
+${LIBTLS}: ${LIBCRYPTO}
+.endif # !HAVE_LIBTLS
+
 .include <bsd.prog.mk>
