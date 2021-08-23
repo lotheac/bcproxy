@@ -170,8 +170,21 @@ on_close(struct bc_parser *parser)
 	case 53: /* exp */
 	case 54: /* player status */
 	case 60: /* player location */
+    break;
+  case 61: /* party place */
+		buffer_append_str(st->obuf, MARKER "partyplace ");
+		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_str(st->obuf, "\n");
+		break;
 	case 62: /* party status */
+		buffer_append_str(st->obuf, MARKER "party ");
+		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_str(st->obuf, "\n");
+		break;
 	case 63: /* player left party */
+		buffer_append_str(st->obuf, MARKER "partyleave ");
+		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_str(st->obuf, "\n");
 		break;
 	case 64: /* prot status */
 		buffer_append_str(st->obuf, MARKER "prot ");
