@@ -6,3 +6,4 @@
 /conf.mk
 /config/out
 /libressl-*
+/version.h

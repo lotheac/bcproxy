@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include "config.h"
 #include "net.h" /* <tls.h> */
+#include "version.h"
 
 static int
 socket_setblocking(int fd)
