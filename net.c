@@ -81,17 +81,17 @@ struct tls *
 connect_batmud(int *fd)
 {
 	struct tls *ctx = NULL;
-	const char *bc_magic = "\033bc 1\n";
+	const char *bc_magic = "\033bc 1\n\033<vbcp/" PROXY_VERSION ">\n";
 	const char *hostname = "batmud.bat.org";
 	char *servname = "2022";
-
-	ctx = tls_client();
 	int ret;
 	struct addrinfo *result, *rp;
 	struct addrinfo hints = {
 		.ai_family = AF_UNSPEC,
 		.ai_socktype = SOCK_STREAM,
 	};
+
+	ctx = tls_client();
 	ret = getaddrinfo(hostname, servname, &hints, &result);
 	for (rp = result; rp != NULL; rp = rp->ai_next) {
 		*fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
