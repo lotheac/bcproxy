@@ -22,7 +22,6 @@
 #include "db.h"
 #include "net.h"
 #include "parser.h"
-#include "postgres.h"
 #include "proxy.h"
 #include "room.h"
 
@@ -235,13 +234,6 @@ usage(void)
 extern char *optarg;
 extern int optind;
 
-struct db postgres_db = {
-	.dbp_init = postgres_init,
-	.dbp_free = postgres_free,
-	.add_room = postgres_add_room,
-	.add_exit = postgres_add_exit,
-};
-
 int
 main(int argc, char **argv)
 {
@@ -267,17 +259,16 @@ main(int argc, char **argv)
 
 	if (strcmp("test_parser", getprogname()) == 0) {
 		testmode = 1;
-		db = &(struct db) {
-			.dbp = NULL,
-			.dbp_init = NULL,
-			.dbp_free = NULL,
-			.add_room = NULL,
-			.add_exit = NULL,
-		};
-	} else
-		db = &postgres_db;
+	}
 
-	db_init(db);
+	db = &(struct db) {
+		.dbp = NULL,
+		.dbp_init = NULL,
+		.dbp_free = NULL,
+		.add_room = NULL,
+		.add_exit = NULL,
+	};
+
 	parser.data = proxy_state_new(BUFSZ, db);
 	if (!parser.data)
 		errx(1, "failed to initialize proxy_state");
