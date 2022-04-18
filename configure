@@ -5,7 +5,6 @@ exec 3> config.h
 exec 4> conf.mk
 echo '#ifndef CONFIG_H' >&3
 echo '#define CONFIG_H' >&3
-echo "#define PROXY_VERSION \"$(git describe --dirty)\"" >&3
 CC=${CC-cc}
 
 color=color.c

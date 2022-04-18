@@ -7,6 +7,11 @@ WARNINGS=	yes
 LINKS=		${BINDIR}/${PROG} ${BINDIR}/test_parser
 # required for asprintf on glibc
 COPTS+=		-D_GNU_SOURCE
+COPTS+=		-I${.OBJDIR}
+
+net.o: version.h
+version.h: .git
+	echo '#define PROXY_VERSION "'$$(git describe --dirty)'"' > $@
 
 .include "conf.mk"
 .ifndef HAVE_LIBTLS
