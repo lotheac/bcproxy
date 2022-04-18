@@ -169,6 +169,12 @@ on_close(struct bc_parser *parser)
 	case 52: /* player name, race, level etc. and exp */
 	case 53: /* exp */
 	case 54: /* player status */
+		break;
+	case 56: /* minion hp status */
+		buffer_append_str(st->obuf, MARKER "minionhpstatus ");
+		buffer_append_buf(st->obuf, st->tmpbuf);
+		buffer_append_str(st->obuf, "\n");
+		break;
 	case 60: /* player location */
 		break;
 	case 61: /* party place */
